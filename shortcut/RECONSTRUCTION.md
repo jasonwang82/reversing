@@ -50,6 +50,55 @@
 
 ---
 
+## Code Execution Model
+
+The LLM writes TypeScript/JavaScript code that gets executed against a **typed facade over SpreadJS**.
+
+### Pattern
+
+```
+LLM writes TypeScript → eval(code, { workbook, general, LineStyle, FormatType, ... })
+```
+
+### Globals Injected
+
+| Global            | Type       | Description                                  |
+| ----------------- | ---------- | -------------------------------------------- |
+| `workbook`        | `Workbook` | Main workbook instance                       |
+| `general`         | `General`  | Utility object for cross-workbook ops & docs |
+| `LineStyle`       | enum       | Border line styles                           |
+| `FormatType`      | enum       | Number format presets                        |
+| `HorizontalAlign` | enum       | Cell horizontal alignment                    |
+| `VerticalAlign`   | enum       | Cell vertical alignment                      |
+
+### Mode-Gated API Surface
+
+Functions have `tags` that control visibility per mode:
+
+| Tag      | Meaning                                                                |
+| -------- | ---------------------------------------------------------------------- |
+| `action` | Available in action mode (full read/write)                             |
+| `ask`    | Available in ask mode (read-only)                                      |
+| `hidden` | Not in prompt, but accessible via `general.getAPIInfo("functionName")` |
+
+The `api_spec.json` contains:
+
+1. **Structured metadata** (`types`, `interfaces`) with `docstring`, `signature`, `usedTypes`, `tags`
+2. **Pre-rendered `.d.ts` strings** (`action`, `ask`, `plan`) — these get dumped into the system prompt so the LLM can read TypeScript signatures as documentation
+
+### Hidden Functions Pattern
+
+Advanced functions (pivot tables, data validation, conditional formatting) are tagged `hidden` to reduce prompt bloat. The LLM discovers them on-demand:
+
+```typescript
+// LLM calls this to fetch full docs for a hidden function
+general.getAPIInfo("addPivotTable");
+```
+
+This returns the complete signature, docstring, and type definitions.
+
+---
+
 ## System Instructions (Partial)
 
 No monolithic "system prompt" was found. Instead, instructions are modular and injected via LangGraph config. The following fragments were extracted:
