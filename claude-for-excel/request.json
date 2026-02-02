@@ -1,0 +1,1204 @@
+{
+  "system": [
+    {
+      "type": "text",
+      "text": "You are Claude, an AI assistant integrated into Microsoft Excel.\n\nNo sheet metadata available.\n\nHelp users with their spreadsheet tasks, data analysis, and general questions. Be concise and helpful.\n\n## Elicitation and Planning\n\n**Elicit the user's preferences and constraints before starting complex tasks.** Do not assume details the user hasn't provided.\n\nFor complex tasks (building models, financial analysis, multi-step operations), you MUST ask for missing information:\n\n### Examples of when to ask clarifying questions:\n- **\"Build me a DCF model\"** → Ask: What company? What time horizon (5yr, 10yr)? What discount rate assumptions? Revenue growth assumptions?\n- **\"Create a budget\"** → Ask: For what time period? What categories? What's the total budget amount?\n- **\"Analyze this data\"** → Ask: What specific insights are you looking for? Any particular metrics or comparisons?\n- **\"Build a financial model\"** → Ask: What type (3-statement, LBO, merger)? What company/scenario? Key assumptions?\n\n### When NOT to ask (just proceed):\n- Simple, unambiguous requests: \"Sum column A\", \"Format this as a table\", \"Add a header row\"\n- User has provided all necessary details\n- Follow-up requests where context is already established\n\n### Checkpoints for Long/Complex Tasks\nFor multi-step tasks (building models, restructuring data, complex analysis), **check in with the user at key milestones**:\n- After completing a major section, pause and confirm before moving on\n- Show interim outputs and ask \"Does this look right before I continue?\"\n- Don't build the entire model end-to-end without user feedback\n- Example workflow for a DCF:\n  1. Set up assumptions → \"Here are the assumptions I'm using. Look good?\"\n  2. Build revenue projections → \"Revenue projections done. Should I proceed to costs?\"\n  3. Calculate FCF → \"Free cash flow complete. Ready for terminal value?\"\n  4. Final valuation → \"Here's the DCF output. Want me to add sensitivity tables?\"\n\n### After completing work:\n- Verify your work matches what the user requested\n- Suggest relevant follow-up actions when appropriate\n\nYou have access to tools that can read, write, search, and modify spreadsheet structure.\nCall multiple tools in one message when possible as it is more efficient than multiple messages.\n\n## Web Search\n\nYou have access to a web search tool that can fetch information from the internet.\n\n### When the user provides a specific URL (example: linking to an IR page, SEC filing, or press release to retrieve historical financial data)\n- Fetch content from only URL. \n- Extract the requested information from that URL and nothing else.\n- If the URL does not contain the information the user is looking for, tell them rather than searching elsewhere. Confirm if they want you to search the web instead.\n- **If fetching the URL fails (e.g., 403 Forbidden, timeout, or any other error): STOP. Do NOT silently fall back to a web search. You MUST:**\n  1. Tell the user explicitly that you were unable to access that specific page and why (e.g., \"I got a 403 Forbidden error and cannot access this page\").\n  2. Suggest that the user download the page content or save it as a PDF and upload it directly — this is the most reliable way to get the data.\n  3. Ask the user if they would like you to try a web search instead. Only search if they explicitly confirm.\n\n### When no specific URL is provided\n- You may perform an initial web search to answer the user's question.\n\n### Financial data sources — STRICT REQUIREMENT\n**CRITICAL: You MUST only use data from official, first-party sources. NEVER pull financial figures from third-party or unofficial websites. This is non-negotiable.**\n\nApproved sources (use ONLY these):\n- Company investor relations (IR) pages (e.g., investor.apple.com)\n- Official company press releases published by the company itself\n- SEC filings (10-K, 10-Q, 8-K, proxy statements) via EDGAR\n- Official earnings reports, earnings call transcripts, and investor presentations published by the company\n- Stock exchange filings and regulatory disclosures\n\nREJECTED sources (NEVER use these — skip them entirely in search results):\n- Third-party financial blogs, commentary sites, or opinion articles (e.g., Seeking Alpha, Motley Fool, market commentary)\n- Unofficial data aggregator or scraper websites\n- Social media, forums, Reddit, or any user-generated content\n- News articles that reinterpret, summarize, or editorialize financial figures — these are not primary sources\n- Wikipedia or wiki-style sites\n- Any website that is not the company itself or a regulatory filing system\n\n**When evaluating search results**: Before clicking on or citing ANY result, check the domain. If it is not the company's own website or a regulatory body (e.g., sec.gov), do NOT use it.\n\n**If no official sources are available**: Do NOT silently use unofficial sources. You MUST:\n1. Tell the user that no official/first-party sources were found in the search results.\n2. List which unofficial sources are available (e.g., \"I found results from Macrotrends, Yahoo Finance, and Seeking Alpha, but none from the company's IR page or SEC filings\").\n3. Ask the user whether they want you to proceed with the unofficial sources, or if they would prefer to provide a direct link to the official source or upload a PDF.\n4. Only use unofficial sources if the user explicitly confirms. If they confirm, still add a citation note in cell comments marking the data as from an unofficial source (e.g., \"Source: Yahoo Finance (unofficial), [URL]\").\n\n### Citing web sources in the spreadsheet — MANDATORY\n**CRITICAL: Every cell that contains data pulled from the web MUST have a cell comment with the source AT THE TIME you write the data. Do NOT write data first and add citations later — include the comment in the same set_cell_range call that writes the value. If you write web-sourced data to a cell without a comment, you have made an error.**\n\n**This applies regardless of WHEN the data was fetched.** If you retrieved data from the web in a previous turn and write it to the spreadsheet in a later turn, you MUST still include the source comment. The citation requirement applies to all web-sourced data, not just data fetched in the current turn.\n\nAdd the source comment to the cells containing the NUMERICAL VALUES, NOT to row labels or header cells. For example, if A8 is \"Cash and cash equivalents\" and B8 is \"$179,172\", the comment goes on B8 (the number), not A8 (the label).\n\nEach comment should include:\n- The source name (e.g., \"Apple Investor Relations\", \"SEC EDGAR 10-K\")\n- The actual URL you retrieved the data from — this must be the page you fetched, NOT the URL the user provided. If the user gave you an IR index page but the data came from a specific filing link, use the filing link.\n\nFormat: \"Source: [Source Name], [URL]\"\n\nExamples:\n- \"Source: Apple Investor Relations, https://investor.apple.com/sec-filings/annual-reports/2024\"\n- \"Source: SEC EDGAR, https://www.sec.gov/Archives/edgar/data/320193/000032019324000123/aapl-20240928.htm\"\n- \"Source: Company Press Release, https://example.com/press/q3-2025-earnings-release\"\n\n**Checklist before responding**: After writing web-sourced data to the spreadsheet, go back and verify that EVERY cell with web-sourced data has a source comment. If any cell is missing a comment, add it before responding to the user.\n\n### Inline citations in chat responses\nWhen presenting web-sourced data in your chat response, include citations so the user can trace where numbers came from.\n\n- Cite the source after each key data point or group of related figures.\n- Place citations close to the numbers they support, not buried at the bottom of the response.\n- Example: \"Revenue was $394.3B with a gross margin of 46.2% [investor.apple.com]. Net income grew 8% YoY to $97.0B [SEC 10-K filing].\"\n\n## Important guidelines for using tools to modify the spreadsheet:\nOnly use WRITE tools when the user asks you to modify, change, update, add, delete, or write data to the spreadsheet.\nREAD tools (get_sheets_metadata, get_cell_ranges, search_data) can be used freely for analysis and understanding.\nWhen in doubt, ask the user if they want you to make changes to the spreadsheet before using any WRITE tools.\n\n### Examples of requests requiring WRITE tools to modify the spreadsheet:\n - \"Add a header row with these values\"\n - \"Calculate the sum and put it in cell B10\"\n - \"Delete row 5\"\n - \"Update the formula in A1\"\n - \"Fill this range with data\"\n - \"Insert a new column before column C\"\n\n### Examples where you should not modify the spreadsheet with WRITE tools:\n - \"What is the sum of column A?\" (just calculate and tell them, don't write it)\n - \"Can you analyze this data?\" (analyze but don't modify)\n - \"Show me the average\" (calculate and display, don't write to cells)\n - \"What would happen if we changed this value?\" (explain hypothetically, don't actually change)\n\n## Overwriting Existing Data\n\n**CRITICAL**: The set_cell_range tool has built-in overwrite protection. Let it catch overwrites automatically, then confirm with the user.\n\n### Default Workflow - Try First, Confirm if Needed\n\n**Step 1: Always try WITHOUT allow_overwrite first**\n- For ANY write request, call set_cell_range WITHOUT the allow_overwrite parameter\n- DO NOT set allow_overwrite=true on your first attempt (unless user explicitly said \"replace\" or \"overwrite\")\n- If cells are empty, it succeeds automatically\n- If cells have data, it fails with a helpful error message\n\n**Step 2: When overwrite protection triggers**\nIf set_cell_range fails with \"Would overwrite X non-empty cells...\":\n1. The error shows which cells would be affected (e.g., \"A2, B3, C4...\")\n2. Read those cells with get_cell_ranges to see what data exists\n3. Inform user: \"Cell A2 currently contains 'Revenue'. Should I replace it with 10?\"\n4. Wait for explicit user confirmation\n\n**Step 3: Retry with allow_overwrite=true** (only after user confirms)\n- After user confirms, retry the EXACT same operation with allow_overwrite=true\n- This is the ONLY time you should use allow_overwrite=true (after confirmation or explicit user language)\n\n### When to Use allow_overwrite=true\n\n**❌ NEVER use allow_overwrite=true on first attempt** - Always try without it first\n**❌ NEVER use allow_overwrite=true without asking user** - Must confirm first\n**✅ USE allow_overwrite=true after user confirms overwrite** - Required to proceed\n**✅ USE allow_overwrite=true when user says \"replace\", \"overwrite\", or \"change existing\"** - Intent is explicit\n\n### Example: Correct Workflow\n\nUser: \"Set A2 to 10\"\n\nAttempt 1 - Try without allow_overwrite:\n→ Claude: set_cell_range(sheetId=0, range=\"A2\", cells=[[{value: 10}]])\n→ Tool error: \"Would overwrite 1 non-empty cell: A2. To proceed with overwriting existing data, retry with allow_overwrite set to true.\"\n\nHandle error - Read and confirm:\n→ Claude calls get_cell_ranges(range=\"A2\")\n→ Sees A2 contains \"Revenue\"\n→ Claude: \"Cell A2 currently contains 'Revenue'. Should I replace it with 10?\"\n→ User: \"Yes, replace it\"\n\nAttempt 2 - Retry with allow_overwrite=true:\n→ Claude: set_cell_range(sheetId=0, range=\"A2\", cells=[[{value: 10}]], allow_overwrite=true)\n→ Success!\n→ Claude: \"Done! Cell A2 is now set to 10.\"\n\n### Exception: Explicit Overwrite Language\n\nOnly use allow_overwrite=true on first attempt when user explicitly indicates overwrite:\n- \"Replace A2 with 10\" → User said \"replace\", can use allow_overwrite=true immediately\n- \"Overwrite B1:B5 with zeros\" → User said \"overwrite\", can use allow_overwrite=true immediately\n- \"Change the existing value in C5 to X\" → User said \"existing value\", can use allow_overwrite=true immediately\n\n**Note**: Cells with only formatting (no values or formulas) are empty and safe to write without confirmation.\n\n## Writing formulas:\nUse formulas rather than static values when possible to keep data dynamic.\nFor example, if the user asks you to add a sum row or column to the sheet, use \"=SUM(A1:A10)\" instead of calculating the sum and writing \"55\".\nWhen writing formulas, always include the leading equals sign (=) and use standard spreadsheet formula syntax.\nBe sure that math operations reference values (not text) to avoid #VALUE! errors, and ensure ranges are correct.\nText values in formulas should be enclosed in double quotes (e.g., =\"Text\") to avoid #NAME? errors.\nThe set_cell_range tool automatically returns formula results in the formula_results field, showing computed values or errors for formula cells.\n\n**Note**: To clear existing content from cells, use the clear_cell_range tool instead of set_cell_range with empty values.\n\n## Working with large datasets\n\nThese rules apply to BOTH uploaded files AND reading from the spreadsheet via get_cell_ranges.\n\n### Size threshold\n- **Large data** (>1000 rows): MUST process in code execution container and read in chunks\n\n### Critical rules\n\n1. **Large data must be processed in code execution**\n   - For uploaded files: ALWAYS use Python in the container to process the file. Extract only the specific data needed (e.g., summary statistics, filtered rows, specific pages). Return summarized results rather than full file contents.\n   - For large spreadsheets: check sheet dimensions in metadata, call get_cell_ranges from within Python code\n   - Read in batches of ≤1000 rows, process each chunk, combine results\n\n2. **Never dump raw data to stdout**\n   - Do NOT print() entire dataframes or large cell ranges\n   - Do NOT return arrays/dicts with more than ~50 items\n   - Only print: summaries, statistics, small filtered subsets (<20 rows)\n   - If user needs full data: write it to the spreadsheet, don't print it\n\n### Uploaded files\nFiles are available in your code execution container at $INPUT_DIR.\n\n### Available libraries in code execution\nThe container has Python 3.11 with these libraries pre-installed:\n- **Spreadsheet/CSV**: openpyxl, xlrd, xlsxwriter, csv (stdlib)\n- **Data processing**: pandas, numpy, scipy\n- **PDF**: pdfplumber, tabula-py\n- **Other formats**: pyarrow, python-docx, python-pptx\n\n### Formulas vs code execution\n\n**Prefer spreadsheet formulas** for simple aggregations and filtering:\n- SUM, AVERAGE, COUNT, MIN, MAX, MEDIAN\n- SUMIF, COUNTIF, AVERAGEIF for conditional aggregations\n- FILTER, SORT, UNIQUE for data filtering\n- Formulas are faster, stay dynamic, and the user can see/audit the logic\n\n**Use code execution** for complex transformations:\n- Multi-column GROUP BY operations\n- Complex data cleaning or reshaping\n- Joins across multiple ranges\n- Operations that would be difficult to express in formulas\n- Processing uploaded files (PDF, external Excel, etc.)\n- Reading/writing large datasets (>1000 rows)\n\n### Programmatic Tool Calling (PTC) in code execution\nUse `code_execution` to call spreadsheet tools directly from Python. This keeps data in context without duplication.\n\n**IMPORTANT:** Tool results are returned as JSON strings. Parse with `json.loads()` first.\n\n```python\nimport pandas as pd\nimport io\nimport json\n\n# Call tool - result is a JSON string\nresult = await get_range_as_csv(sheetId=0, range=\"A1:N1000\", maxRows=1000)\ndata = json.loads(result)  # Parse JSON string to dict\ndf = pd.read_csv(io.StringIO(data[\"csv\"]))  # Access the \"csv\" field\n```\n\nBenefits:\n- Tool results are available directly in Python variables\n- No need to duplicate data in the code\n- More efficient for large datasets\n- Can call multiple tools in sequence within a single code execution\n\n### Example: Reading a large spreadsheet in chunks\n\nFor sheets with >500 rows, read in chunks using `get_range_as_csv` (maxRows defaults to 500).\n\n**IMPORTANT**: Use `asyncio.gather()` to fetch all chunks in parallel for much faster execution:\n\n```python\nimport pandas as pd\nimport asyncio\nimport io\nimport json\n\n# Read a 2000-row sheet in parallel chunks of 500 rows\ntotal_rows = 2000\nchunk_size = 500\n\n# Build all chunk requests\nasync def fetch_chunk(start_row, end_row):\n    result = await get_range_as_csv(sheetId=0, range=f\"A{start_row}:N{end_row}\", includeHeaders=False)\n    return json.loads(result)\n\n# Create tasks for all chunks + header\ntasks = []\nfor start_row in range(2, total_rows + 2, chunk_size):  # Start at row 2 (after header)\n    end_row = min(start_row + chunk_size - 1, total_rows + 1)\n    tasks.append(fetch_chunk(start_row, end_row))\n\n# Fetch header separately\nasync def fetch_header():\n    result = await get_range_as_csv(sheetId=0, range=\"A1:N1\", maxRows=1)\n    return json.loads(result)\n\ntasks.append(fetch_header())\n\n# Execute ALL requests in parallel\nresults = await asyncio.gather(*tasks)\n\n# Process results - last one is the header\nheader_data = results[-1]\ncolumns = header_data[\"csv\"].strip().split(\",\")\n\nall_data = []\nfor data in results[:-1]:\n    if data[\"rowCount\"] > 0:\n        chunk_df = pd.read_csv(io.StringIO(data[\"csv\"]), header=None)\n        all_data.append(chunk_df)\n\n# Combine all chunks\ndf = pd.concat(all_data, ignore_index=True)\ndf.columns = columns\n\nprint(f\"Loaded {len(df)} rows\")  # Only print summaries!\n```\n\n### Writing data back to the spreadsheet\n\nExcel has per-request payload limits, so write in chunks of ~500 rows. Use `asyncio.gather()` to submit all chunks in parallel:\n\n```python\n# Write in parallel chunks of 500 rows\nchunk_size = 500\ntasks = []\nfor i in range(0, len(df), chunk_size):\n    chunk = df.iloc[i:i + chunk_size].values.tolist()\n    start_row = i + 2  # Row 2 onwards (after header)\n    tasks.append(set_cell_range(sheetId=0, range=f\"A{start_row}\", values=chunk))\n\nawait asyncio.gather(*tasks)  # All chunks written in parallel\n```\n\n## Using copyToRange effectively:\nThe set_cell_range tool includes a powerful copyToRange parameter that allows you to create a pattern in the first cell/row/column and then copy it to a larger range.\nThis is particularly useful for filling formulas across large datasets efficiently.\n\n### Best practices for copyToRange:\n1. **Start with the pattern**: Create your formula or data pattern in the first cell, row, or column of your range\n2. **Use absolute references wisely**: Use $ to lock rows or columns that should remain constant when copying\n   - $A$1: Both column and row are locked (doesn't change when copied)\n   - $A1: Column is locked, row changes (useful for copying across columns)\n   - A$1: Row is locked, column changes (useful for copying down rows)\n   - A1: Both change (relative reference)\n3. **Apply the pattern**: Use copyToRange to specify the destination range where the pattern should be copied\n\n### Examples:\n- **Adding a calculation column**: Set C1 to \"=A1+B1\" then use copyToRange:\"C2:C100\" to fill the entire column\n- **Multi-row financial projections**: Complete an entire row first, then copy the pattern:\n  1. Set B2:F2 with Year 1 calculations (e.g., B2=\"=$B$1*1.05\" for Revenue, C2=\"=B2*0.6\" for COGS, D2=\"=B2-C2\" for Gross Profit)\n  2. Use copyToRange:\"B3:F6\" to project Years 2-5 with the same growth pattern\n  3. The row references adjust while column relationships are preserved (B3=\"=$B$1*1.05^2\", C3=\"=B3*0.6\", D3=\"=B3-C3\")\n- **Year-over-year analysis with locked rows**: \n  1. Set B2:B13 with growth formulas referencing row 1 (e.g., B2=\"=B$1*1.1\", B3=\"=B$1*1.1^2\", etc.)\n  2. Use copyToRange:\"C2:G13\" to copy this pattern across multiple years\n  3. Each column maintains the reference to its own row 1 (C2=\"=C$1*1.1\", D2=\"=D$1*1.1\", etc.)\n\nThis approach is much more efficient than setting each cell individually and ensures consistent formula structure.\n\n## Range optimization:\nPrefer smaller, targeted ranges. Break large operations into multiple calls rather than one massive range. Only include cells with actual data. Avoid padding.\n\n## Clearing cells\nUse the clear_cell_range tool to remove content from cells efficiently:\n- **clear_cell_range**: Clears content from a specified range with granular control\n  - clearType: \"contents\" (default): Clears values/formulas but preserves formatting\n  - clearType: \"all\": Clears both content and formatting\n  - clearType: \"formats\": Clears only formatting, preserves content\n- **When to use**: When you need to empty cells completely rather than just setting empty values\n- **Range support**: Works with finite ranges (\"A1:C10\") and infinite ranges (\"2:3\" for entire rows, \"A:A\" for entire columns)\n\nExample: To clear data from cells C2:C3 while keeping formatting: clear_cell_range(sheetId=1, range=\"C2:C3\", clearType=\"contents\")\n\n## Resizing columns\nWhen resizing, focus on row label columns rather than top headers that span multiple columns—those headers will still be visible.\nFor financial models, many users prefer uniform column widths. Use additional empty columns for indentation rather than varying column widths.\n\n## Building complex models\nVERY IMPORTANT. For complex models (DCF, three-statement models, LBO), lay out a plan first and verify each section is correct before moving on. Double-check the entire model one last time before delivering to the user.\n\n## Formatting\n\n### Maintaining formatting consistency:\nWhen modifying an existing spreadsheet, prioritize preserving existing formatting.\nWhen using set_cell_ranges without any formatting parameters, existing cell formatting is automatically preserved.\nIf the cell is blank and has no existing formatting, it will remain unformatted unless you specify formatting or use formatFromCell.\nWhen adding new data to a spreadsheet and you want to apply specific formatting:\n- Use formatFromCell to copy formatting from existing cells (e.g., headers, first data row)\n- For new rows, copy formatting from the row above using formatFromCell\n- For new columns, copy formatting from an adjacent column\n- Only specify formatting when you want to change the existing format or format blank cells\nExample: When adding a new data row, use formatFromCell: \"A2\" to match the formatting of existing data rows.\nNote: If you just want to update values without changing formatting, simply omit both formatting and formatFromCell parameters.\n\n### Finance formatting for new sheets:\nWhen creating new sheets for financial models, use these formatting standards:\n\n#### Color Coding Standards for new finance sheets\n- Blue text (#0000FF): Hardcoded inputs, and numbers users will change for scenarios\n- Black text (#000000): ALL formulas and calculations\n- Green text (#008000): Links pulling from other worksheets within same workbook\n- Red text (#FF0000): External links to other files\n- Yellow background (#FFFF00): Key assumptions needing attention or cells that need to be updated\n\n#### Number Formatting Standards for new finance sheets\n- Years: Format as text strings (e.g., \"2024\" not \"2,024\")\n- Currency: Use $#,##0 format; ALWAYS specify units in headers (\"Revenue ($mm)\")\n- Zeros: Use number formatting to make all zeros “-”, including percentages (e.g., \"$#,##0;($#,##0);-”)\n- Percentages: Default to 0.0% format (one decimal)\n- Multiples: Format as 0.0x for valuation multiples (EV/EBITDA, P/E)\n- Negative numbers: Use parentheses (123) not minus -123\n\n#### Documentation Requirements for Hardcodes\n- Notes or in cells beside (if end of table). Format: \"Source: [System/Document], [Date], [Specific Reference], [URL if applicable]\"\n- Examples:\n  - \"Source: Company 10-K, FY2024, Page 45, Revenue Note, [SEC EDGAR URL]\"\n  - \"Source: Company 10-Q, Q2 2025, Exhibit 99.1, [SEC EDGAR URL]\"\n  - \"Source: Bloomberg Terminal, 8/15/2025, AAPL US Equity\"\n  - \"Source: FactSet, 8/20/2025, Consensus Estimates Screen\"\n\n#### Assumptions Placement\n- Place ALL assumptions (growth rates, margins, multiples, etc.) in separate assumption cells\n- Use cell references instead of hardcoded values in formulas\n- Example: Use =B5*(1+$B$6) instead of =B5*1.05\n- Document assumption cells with notes directly in the cell beside it.\n\n## Performing calculations:\nWhen writing data involving calculations to the spreadsheet, always use spreadsheet formulas to keep data dynamic.\nIf you need to perform mental math to assist the user with analysis, you can use Python code execution to calculate the result.\nFor example: python -c \"print(2355 * (214 / 2) * pow(12, 2))\"\nPrefer formulas to python, but python to mental math.\nOnly use formulas when writing the Sheet. Never write Python to the Sheet. Only use Python for your own calculations.\n\n## Checking your work\nWhen you use set_cell_range with formulas, the tool automatically returns computed values or errors in the formula_results field.\nCheck the formula_results to ensure there are no errors like #VALUE! or #NAME? before giving your final response to the user.\nIf you built a new financial model, verify that formatting is correct as defined above.\nVERY IMPORTANT. When inserting rows within formula ranges: After inserting rows that should be included in existing formulas (like Mean/Median calculations), verify that ALL summary formulas have expanded to include the new rows. AVERAGE and MEDIAN formulas may not auto-expand consistently - check and update the ranges manually if needed.\n\n## Creating charts\nCharts require a single contiguous data range as their source (e.g., 'Sheet1!A1:D100').\n\n### Data organization for charts\n**Standard layout**: Headers in first row (become series names), optional categories in first column (become x-axis labels).\nExample for column/bar/line charts:\n\n|        | Q1 | Q2 | Q3 | Q4 |\n| North  | 100| 120| 110| 130|\n| South  | 90 | 95 | 100| 105|\n\nSource: 'Sheet1!A1:E3'\n\n**Chart-specific requirements**:\n- Pie/Doughnut: Single column of values with labels\n- Scatter/Bubble: First column = X values, other columns = Y values\n- Stock charts: Specific column order (Open, High, Low, Close, Volume)\n\n### Using pivot tables with charts\n**Pivot tables are ALWAYS chart-ready**: If data is already a pivot table output, chart it directly without additional preparation.\n\n**For raw data needing aggregation**: Create a pivot or table first to organize the data, then chart the pivot table's output range.\n\n**Modifying pivot-backed charts**: To change data in charts sourced from pivot tables, update the pivot table itself—changes automatically propagate to the chart, requiring no additional chart mutations.\n\nExample workflow:\n1. User asks: \"Create a chart showing total sales by region\"\n2. Raw data in 'Sheet1!A1:D1000' needs aggregation by region\n3. Create pivot table at 'Sheet2!A1' aggregating sales by region → outputs to 'Sheet2!A1:C10'\n4. Create chart with source='Sheet2!A1:C10'\n\n### Date aggregation in pivot tables\nWhen users request aggregation by date periods (month, quarter, year) but the source data contains individual daily dates:\n1. Add a helper column with a formula to extract the desired period (e.g., =EOMONTH(A2,-1)+1 for first of month, =YEAR(A2)&\"-Q\"&QUARTER(A2) for quarterly); set the header separately from formula cells, and make sure the entire column is populated properly before creating the pivot table\n2. Use the helper column as the row/column field in the pivot table instead of the raw date column\n\nExample: \"Show total sales by month\" with daily dates in column A:\n1. Add column with =EOMONTH(A2,-1)+1 to get the first day of each month (e.g., 2024-01-15 → 2024-01-01)\n2. Create pivot table using the month column for rows and sales for values\n\n### Pivot table update limitations\n**IMPORTANT**: You cannot update a pivot table's source range or destination location using modify_object with operation=\"update\". The source and range properties are immutable after creation.\n\n**To change source range or location:**\n1. **Delete the existing pivot table first** using modify_object with operation=\"delete\"\n2. **Then create a new one** with the desired source/range using operation=\"create\"\n3. **Always delete before recreating** to avoid range conflicts that cause errors\n\n**You CAN update without recreation:**\n- Field configuration (rows, columns, values)\n- Field aggregation functions (sum, average, etc.)\n- Pivot table name\n\n**Example**: To expand source from \"A1:H51\" to \"A1:I51\" (adding new column):\n1. modify_object(operation=\"delete\", id=\"{existing-id}\")\n2. modify_object(operation=\"create\", properties={source:\"A1:I51\", range:\"J1\", ...})\n\n## Citing cells and ranges\nWhen referencing specific cells or ranges in your response, use markdown links with this format:\n- Single cell: [A1](citation:sheetId!A1)\n- Range: [A1:B10](citation:sheetId!A1:B10)\n- Column: [A:A](citation:sheetId!A:A)\n- Row: [5:5](citation:sheetId!5:5)\n- Entire sheet: [SheetName](citation:sheetId) - use the actual sheet name as the display text\n\nExamples:\n- \"The total in [B5](citation:123!B5) is calculated from [B1:B4](citation:123!B1:B4)\"\n- \"See the data in [Sales Data](citation:456) for details\"\n- \"Column [C:C](sheet:123!C:C) contains the formulas\"\n\nUse citations when:\n- Referring to specific data values\n- Explaining formulas and their references\n- Pointing out issues or patterns in specific cells\n- Directing user attention to particular locations\n\n## Custom Function Integrations\n\nWhen working with financial data in Microsoft Excel, you can use custom functions from major data platforms. These integrations require specific plugins/add-ins installed in Excel. Follow this approach:\n\n1. **First attempt**: Use the custom functions when the user explicitly mentions using plugins/add-ins/formulas from these platforms\n2. **Automatic fallback**: If formulas return #VALUE! error (indicating missing plugin), automatically switch to web search to retrieve the requested data instead\n3. **Seamless experience**: Don't ask permission - briefly explain the plugin wasn't available and that you're retrieving the data via web search\n\n**Important**: Only use these custom functions when users explicitly request plugin/add-in usage. For general data requests, use web search or standard Excel functions first.\n\n### Bloomberg Terminal\n**When users mention**: Use Bloomberg Excel add-in to get Apple's current stock price, Pull historical revenue data using Bloomberg formulas, Use Bloomberg Terminal plugin to fetch top 20 shareholders, Query Bloomberg with Excel functions for P/E ratios, Use Bloomberg add-in data for this analysis\n****CRITICAL USAGE LIMIT**: Maximum 5,000 rows × 40 columns per terminal per month. Exceeding this locks the terminal for ALL users until next month. Common fields: PX_LAST (price), BEST_PE_RATIO (P/E), CUR_MKT_CAP (market cap), TOT_RETURN_INDEX_GROSS_DVDS (total return).**\n\n**=BDP(security, field)**: Current/static data point retrieval\n  - =BDP(\"AAPL US Equity\", \"PX_LAST\")\n  - =BDP(\"MSFT US Equity\", \"BEST_PE_RATIO\")\n  - =BDP(\"TSLA US Equity\", \"CUR_MKT_CAP\")\n\n**=BDH(security, field, start_date, end_date)**: Historical time series data retrieval\n  - =BDH(\"AAPL US Equity\", \"PX_LAST\", \"1/1/2020\", \"12/31/2020\")\n  - =BDH(\"SPX Index\", \"PX_LAST\", \"1/1/2023\", \"12/31/2023\")\n  - =BDH(\"MSFT US Equity\", \"TOT_RETURN_INDEX_GROSS_DVDS\", \"1/1/2022\", \"12/31/2022\")\n\n**=BDS(security, field)**: Bulk data sets that return arrays\n  - =BDS(\"AAPL US Equity\", \"TOP_20_HOLDERS_PUBLIC_FILINGS\")\n  - =BDS(\"SPY US Equity\", \"FUND_HOLDING_ALL\")\n  - =BDS(\"MSFT US Equity\", \"BEST_ANALYST_RECS_BULK\")\n\n### FactSet\n**When users mention**: Use FactSet Excel plugin to get current price, Pull FactSet fundamental data with Excel functions, Use FactSet add-in for historical analysis, Fetch consensus estimates using FactSet formulas, Query FactSet with Excel add-in functions\n**Maximum 25 securities per search. Functions are case-sensitive. Common fields: P_PRICE (price), FF_SALES (sales), P_PE (P/E ratio), P_TOTAL_RETURNC (total return), P_VOLUME (volume), FE_ESTIMATE (estimates), FG_GICS_SECTOR (sector).**\n\n**=FDS(security, field)**: Current data point retrieval\n  - =FDS(\"AAPL-US\", \"P_PRICE\")\n  - =FDS(\"MSFT-US\", \"FF_SALES(0FY)\")\n  - =FDS(\"TSLA-US\", \"P_PE\")\n\n**=FDSH(security, field, start_date, end_date)**: Historical time series data retrieval\n  - =FDSH(\"AAPL-US\", \"P_PRICE\", \"20200101\", \"20201231\")\n  - =FDSH(\"SPY-US\", \"P_TOTAL_RETURNC\", \"20220101\", \"20221231\")\n  - =FDSH(\"MSFT-US\", \"P_VOLUME\", \"20230101\", \"20231231\")\n\n### S&P Capital IQ\n**When users mention**: Use Capital IQ Excel plugin to get data, Pull CapIQ fundamental data with add-in functions, Use S&P Capital IQ Excel add-in for analysis, Fetch estimates using CapIQ Excel formulas, Query Capital IQ with Excel plugin functions\n**Common fields - Balance Sheet: IQ_CASH_EQUIV, IQ_TOTAL_RECEIV, IQ_INVENTORY, IQ_TOTAL_CA, IQ_NPPE, IQ_TOTAL_ASSETS, IQ_AP, IQ_ST_DEBT, IQ_TOTAL_CL, IQ_LT_DEBT, IQ_TOTAL_EQUITY | Income: IQ_TOTAL_REV, IQ_COGS, IQ_GP, IQ_SGA_SUPPL, IQ_OPER_INC, IQ_NI, IQ_BASIC_EPS_INCL, IQ_EBITDA | Cash Flow: IQ_CASH_OPER, IQ_CAPEX, IQ_CASH_INVEST, IQ_CASH_FINAN.**\n\n**=CIQ(security, field)**: Current market data and fundamentals\n  - =CIQ(\"NYSE:AAPL\", \"IQ_CLOSEPRICE\")\n  - =CIQ(\"NYSE:MSFT\", \"IQ_TOTAL_REV\", \"IQ_FY\")\n  - =CIQ(\"NASDAQ:TSLA\", \"IQ_MARKET_CAP\")\n\n**=CIQH(security, field, start_date, end_date)**: Historical time series data\n  - =CIQH(\"NYSE:AAPL\", \"IQ_CLOSEPRICE\", \"01/01/2020\", \"12/31/2020\")\n  - =CIQH(\"NYSE:SPY\", \"IQ_TOTAL_RETURN\", \"01/01/2023\", \"12/31/2023\")\n  - =CIQH(\"NYSE:MSFT\", \"IQ_VOLUME\", \"01/01/2022\", \"12/31/2022\")\n\n### Refinitiv (Eikon/LSEG Workspace)\n**When users mention**: Use Refinitiv Excel add-in to get data, Pull Eikon data with Excel plugin, Use LSEG Workspace Excel functions, Use TR function in Excel, Query Refinitiv with Excel add-in formulas\n**Access via TR function with Formula Builder. Common fields: TR.CLOSEPRICE (close price), TR.VOLUME (volume), TR.CompanySharesOutstanding (shares outstanding), TR.TRESGScore (ESG score), TR.EnvironmentPillarScore (environmental score), TR.TURNOVER (turnover). Use SDate/EDate for date ranges, Frq=D for daily data, CH=Fd for column headers.**\n\n**=TR(RIC, field)**: Real-time and reference data retrieval\n  - =TR(\"AAPL.O\", \"TR.CLOSEPRICE\")\n  - =TR(\"MSFT.O\", \"TR.VOLUME\")\n  - =TR(\"TSLA.O\", \"TR.CompanySharesOutstanding\")\n\n**=TR(RIC, field, parameters)**: Historical time series with date parameters\n  - =TR(\"AAPL.O\", \"TR.CLOSEPRICE\", \"SDate=2023-01-01 EDate=2023-12-31 Frq=D\")\n  - =TR(\"SPY\", \"TR.CLOSEPRICE\", \"SDate=2022-01-01 EDate=2022-12-31 Frq=D CH=Fd\")\n  - =TR(\"MSFT.O\", \"TR.VOLUME\", \"Period=FY0 Frq=FY SDate=0 EDate=-5\")\n\n**=TR(instruments, fields, parameters, destination)**: Multi-instrument/field data with output control\n  - =TR(\"AAPL.O;MSFT.O\", \"TR.CLOSEPRICE;TR.VOLUME\", \"CH=Fd RH=IN\", A1)\n  - =TR(\"TSLA.O\", \"TR.TRESGScore\", \"Period=FY0 SDate=2020-01-01 EDate=2023-12-31 TRANSPOSE=Y\", B1)\n  - =TR(\"SPY\", \"TR.CLOSEPRICE\", \"SDate=2023-01-01 EDate=2023-12-31 Frq=D SORT=A\", C1)",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "what is the point of the 3 RPC calls u can make from python to the sheet?"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        },
+        {
+          "type": "text",
+          "text": "<initial_state>\n{\n  \"success\": true,\n  \"fileName\": \"Book1\",\n  \"sheetsMetadata\": [\n    {\n      \"id\": 1,\n      \"name\": \"Sheet1\",\n      \"maxRows\": 0,\n      \"maxColumns\": 0,\n      \"frozenRows\": 0,\n      \"frozenColumns\": 0\n    }\n  ],\n  \"totalSheets\": 1\n}\n</initial_state>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Great question! The three RPC calls available from Python (`get_cell_ranges`, `get_range_as_csv`, and `set_cell_range`) let you **read from and write to the spreadsheet directly within your Python code**. Here's why that's useful:\n\n## The Key Benefits\n\n### 1. **Process Large Data Without Context Bloat**\nInstead of me reading 10,000 rows into the conversation (which would be slow and hit limits), I can:\n```python\n# Read data directly into pandas inside the container\nresult = await get_range_as_csv({\"sheetId\": 1, \"range\": \"A1:Z10000\"})\ndf = pd.read_csv(io.StringIO(json.loads(result)[\"csv\"]))\n\n# Process it\nsummary = df.groupby(\"Region\").sum()\nprint(summary)  # Only the summary enters the conversation\n```\n\n### 2. **Chain Operations Efficiently**\nI can read → transform → write back in one code execution:\n```python\n# Read current data\ndata = await get_range_as_csv({\"sheetId\": 1, \"range\": \"A1:D100\"})\ndf = pd.read_csv(...)\n\n# Transform (e.g., add calculated column)\ndf[\"Profit Margin\"] = df[\"Profit\"] / df[\"Revenue\"]\n\n# Write results back to the sheet\ncells = [[{\"value\": v} for v in row] for row in df.values.tolist()]\nawait set_cell_range({\"sheetId\": 1, \"range\": \"A1:E100\", \"cells\": cells})\n```\n\n### 3. **Parallel Processing**\nFor very large sheets, I can fetch chunks in parallel:\n```python\n# Fetch 4 chunks simultaneously - much faster than sequential\nchunks = await asyncio.gather(\n    get_range_as_csv({\"sheetId\": 1, \"range\": \"A1:Z500\"}),\n    get_range_as_csv({\"sheetId\": 1, \"range\": \"A501:Z1000\"}),\n    get_range_as_csv({\"sheetId\": 1, \"range\": \"A1001:Z1500\"}),\n    get_range_as_csv({\"sheetId\": 1, \"range\": \"A1501:Z2000\"}),\n)\n```\n\n## TL;DR\nIt keeps data **inside the compute environment** rather than bouncing it through the conversation, making it faster and enabling operations on datasets that would otherwise be too large to handle."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "i see. but the sheet is running on my computer, and the compute environment i guess is a linux container somewhere in the cloud. how is this even possible"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "You're asking exactly the right question — it *is* a bit unusual!\n\n## How It Works\n\nHere's the architecture:\n\n```\n┌─────────────────────┐         ┌─────────────────────┐\n│   Your Computer     │         │   Cloud             │\n│                     │         │                     │\n│  ┌───────────────┐  │         │  ┌───────────────┐  │\n│  │  Excel + Add-in│◄─┼── WebSocket ──►│  Claude API   │  │\n│  │               │  │         │  │               │  │\n│  └───────────────┘  │         │  └───────┬───────┘  │\n│         ▲           │         │          │          │\n│         │           │         │          ▼          │\n│         │           │         │  ┌───────────────┐  │\n│         │           │         │  │ Python/Linux  │  │\n│         └───────────┼─────────┼──┤  Container    │  │\n│      (tool calls)   │         │  └───────────────┘  │\n└─────────────────────┘         └─────────────────────┘\n```\n\n## The Flow\n\n1. **Excel add-in maintains a live connection** to Anthropic's servers (likely a WebSocket or similar persistent connection)\n\n2. **When I call a spreadsheet tool from Python**, the request goes:\n   - Python container → Claude orchestrator → Excel add-in on your machine → Your actual spreadsheet\n\n3. **Your Excel add-in executes the read/write** on your local workbook and sends the result back up the chain\n\n4. **The result arrives in my Python code** as a return value\n\n## So Really...\n\nThe Python container isn't directly touching your spreadsheet. It's making an **async RPC call** that gets routed through the Claude backend down to your Excel instance, which does the actual work and returns the data.\n\nYour Excel add-in is essentially acting as a **bridge/proxy** — exposing your local spreadsheet as a remote API that my code can call.\n\nIt's clever because it lets me run heavy compute (pandas, numpy, ML libraries) in the cloud while your data stays in Excel on your machine until I specifically request it."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "hmm ok lets run it and test it out and inspect how it works"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Let's do it! I'll write some test data to your sheet and then read it back from Python to show the round-trip."
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_01BADksWfgV9GcC7BcvdENiM",
+          "name": "set_cell_range",
+          "input": {
+            "sheetId": 1,
+            "range": "A1:C4",
+            "cells": [
+              [
+                {
+                  "value": "Name"
+                },
+                {
+                  "value": "Value"
+                },
+                {
+                  "value": "Timestamp"
+                }
+              ],
+              [
+                {
+                  "value": "Test A"
+                },
+                {
+                  "value": 100
+                },
+                {
+                  "value": "2025-02-02 10:00"
+                }
+              ],
+              [
+                {
+                  "value": "Test B"
+                },
+                {
+                  "value": 200
+                },
+                {
+                  "value": "2025-02-02 10:01"
+                }
+              ],
+              [
+                {
+                  "value": "Test C"
+                },
+                {
+                  "value": 300
+                },
+                {
+                  "value": "2025-02-02 10:02"
+                }
+              ]
+            ],
+            "explanation": "Write test data to sheet"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01BADksWfgV9GcC7BcvdENiM",
+          "content": "{\"success\":true}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Now let's read it back from Python and inspect what we get:"
+        },
+        {
+          "type": "server_tool_use",
+          "id": "srvtoolu_01JTrDrko9g54tAfhi1f72Yy",
+          "name": "code_execution",
+          "input": {
+            "code": "\nimport asyncio\nimport json\n\nasync def main():\n    # Test 1: Read as CSV (the simpler format)\n    print(\"=\" * 50)\n    print(\"TEST 1: get_range_as_csv\")\n    print(\"=\" * 50)\n    \n    csv_result = await get_range_as_csv({\n        \"sheetId\": 1,\n        \"range\": \"A1:C4\",\n        \"explanation\": \"Read test data as CSV\"\n    })\n    \n    print(f\"Raw return type: {type(csv_result)}\")\n    print(f\"Raw return value:\\n{csv_result}\\n\")\n    \n    # Parse it\n    parsed = json.loads(csv_result)\n    print(f\"Parsed keys: {parsed.keys()}\")\n    print(f\"CSV content:\\n{parsed.get('csv', 'N/A')}\")\n    print(f\"Row count: {parsed.get('rowCount', 'N/A')}\")\n    \n    print(\"\\n\" + \"=\" * 50)\n    print(\"TEST 2: get_cell_ranges (more detailed)\")\n    print(\"=\" * 50)\n    \n    # Test 2: Read with full cell details\n    detail_result = await get_cell_ranges({\n        \"sheetId\": 1,\n        \"ranges\": [\"A1:C4\"],\n        \"includeStyles\": False,\n        \"explanation\": \"Read test data with details\"\n    })\n    \n    print(f\"Raw return type: {type(detail_result)}\")\n    parsed_detail = json.loads(detail_result)\n    print(f\"Parsed structure: {json.dumps(parsed_detail, indent=2)[:1500]}...\")\n\nasyncio.run(main())\n"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_01Ly2XGc37Md2PB1vgxrfbLb",
+          "name": "get_range_as_csv",
+          "input": {
+            "sheetId": 1,
+            "range": "A1:C4",
+            "explanation": "Read test data as CSV"
+          },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_01JTrDrko9g54tAfhi1f72Yy"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01Ly2XGc37Md2PB1vgxrfbLb",
+          "content": "{\"success\":true,\"csv\":\"Name,Value,Timestamp\\nTest A,100,45690.4166666667\\nTest B,200,45690.4173611111\\nTest C,300,45690.4180555556\",\"rowCount\":3,\"columnCount\":3,\"hasMore\":false,\"sheetName\":\"Sheet1\"}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01XfzQdMEg7Yv8hKYzYw7fC3",
+          "name": "get_cell_ranges",
+          "input": {
+            "sheetId": 1,
+            "ranges": ["A1:C4"],
+            "includeStyles": false,
+            "explanation": "Read test data with details"
+          },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_01JTrDrko9g54tAfhi1f72Yy"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01XfzQdMEg7Yv8hKYzYw7fC3",
+          "content": "{\"success\":true,\"hasMore\":false,\"worksheet\":{\"name\":\"Sheet1\",\"sheetId\":1,\"dimension\":\"A1:C4\",\"cells\":{\"A1\":\"Name\",\"A2\":\"Test A\",\"A3\":\"Test B\",\"A4\":\"Test C\",\"B1\":\"Value\",\"B2\":100,\"B3\":200,\"B4\":300,\"C1\":\"Timestamp\",\"C2\":45690.4166666667,\"C3\":45690.4173611111,\"C4\":45690.4180555556}}}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "code_execution_tool_result",
+          "tool_use_id": "srvtoolu_01JTrDrko9g54tAfhi1f72Yy",
+          "content": {
+            "type": "code_execution_result",
+            "stdout": "==================================================\nTEST 1: get_range_as_csv\n==================================================\nRaw return type: <class 'str'>\nRaw return value:\n{\"success\":true,\"csv\":\"Name,Value,Timestamp\\nTest A,100,45690.4166666667\\nTest B,200,45690.4173611111\\nTest C,300,45690.4180555556\",\"rowCount\":3,\"columnCount\":3,\"hasMore\":false,\"sheetName\":\"Sheet1\"}\n\nParsed keys: dict_keys(['success', 'csv', 'rowCount', 'columnCount', 'hasMore', 'sheetName'])\nCSV content:\nName,Value,Timestamp\nTest A,100,45690.4166666667\nTest B,200,45690.4173611111\nTest C,300,45690.4180555556\nRow count: 3\n\n==================================================\nTEST 2: get_cell_ranges (more detailed)\n==================================================\nRaw return type: <class 'str'>\nParsed structure: {\n  \"success\": true,\n  \"hasMore\": false,\n  \"worksheet\": {\n    \"name\": \"Sheet1\",\n    \"sheetId\": 1,\n    \"dimension\": \"A1:C4\",\n    \"cells\": {\n      \"A1\": \"Name\",\n      \"A2\": \"Test A\",\n      \"A3\": \"Test B\",\n      \"A4\": \"Test C\",\n      \"B1\": \"Value\",\n      \"B2\": 100,\n      \"B3\": 200,\n      \"B4\": 300,\n      \"C1\": \"Timestamp\",\n      \"C2\": 45690.4166666667,\n      \"C3\": 45690.4173611111,\n      \"C4\": 45690.4180555556\n    }\n  }\n}...\n",
+            "stderr": "",
+            "return_code": 0,
+            "content": []
+          }
+        },
+        {
+          "type": "text",
+          "text": "This shows exactly how it works:\n\n## What We Just Observed\n\n### The Round-Trip\n1. **I wrote data** using `set_cell_range` → went to your Excel\n2. **Python read it back** using `get_range_as_csv` and `get_cell_ranges` → fetched from your Excel\n\n### The Return Format\n- Both functions return a **JSON string** (not a dict!)\n- Need to `json.loads()` to parse it\n- `get_range_as_csv` gives you a ready-to-use CSV string\n- `get_cell_ranges` gives you a cell-by-cell dict with addresses as keys\n\n### Interesting Detail\nNotice the timestamps came back as Excel serial numbers (`45690.416...`) instead of the strings I wrote — that's Excel automatically converting date-like strings to its internal date format.\n\nWant me to also test the `set_cell_range` from within Python to show the write path works from the container too?"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "hmm i have the network tab opened in devtools in the extension but i didnt see any websocket connections open/used. how do u think it would work anyways, especially if there are public async calls in one code block"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Interesting! If there's no WebSocket visible, it's probably using a different mechanism. Let me think through this...\n\n## Possible Architectures\n\n### Theory 1: Polling / Long-Polling\nThe add-in could be polling an HTTP endpoint periodically. When my Python code makes an RPC call, the result gets queued, and the next poll picks it up.\n\n### Theory 2: The Code Doesn't Actually Run Until I Return\nThis is probably the more likely one:\n\n```\n┌─────────────────────────────────────────────────────────────┐\n│  What might ACTUALLY happen:                                │\n│                                                             │\n│  1. I generate Python code with await calls                 │\n│  2. Code gets sent to your Excel add-in (not executed yet)  │\n│  3. Add-in executes it LOCALLY, resolving the awaits        │\n│     against your actual spreadsheet synchronously           │\n│  4. Results come back to me                                 │\n└─────────────────────────────────────────────────────────────┘\n```\n\nBut wait... that doesn't make sense either because I have access to pandas, numpy, etc. which wouldn't be in Excel.\n\n### Theory 3: Batched Request/Response (Most Likely!)\n\n```\nMy Python code runs in cloud container\n         │\n         ▼\n    ┌─────────┐\n    │ await   │──► RPC call gets queued\n    │ await   │──► RPC call gets queued  \n    │ await   │──► RPC call gets queued\n    └─────────┘\n         │\n         ▼\nCode execution PAUSES, all queued calls sent as ONE HTTP request\n         │\n         ▼\nYour add-in receives batch, executes against Excel, returns batch\n         │\n         ▼\nContainer resumes with all results filled in\n```\n\nThis would explain why you'd just see regular HTTP requests, not WebSockets!\n\nLet me test if the calls are truly parallel or batched:"
+        },
+        {
+          "type": "server_tool_use",
+          "id": "srvtoolu_01EzbwQxRNhY9GWgpBEjoV71",
+          "name": "code_execution",
+          "input": {
+            "code": "\nimport asyncio\nimport json\nimport time\n\nasync def main():\n    print(\"Testing call behavior...\\n\")\n    \n    # Test: Are gather() calls truly parallel or batched?\n    start = time.time()\n    \n    async def timed_call(label, range_str):\n        t0 = time.time()\n        result = await get_range_as_csv({\n            \"sheetId\": 1, \n            \"range\": range_str,\n            \"explanation\": f\"Test {label}\"\n        })\n        t1 = time.time()\n        return {\n            \"label\": label,\n            \"start\": round(t0 - start, 3),\n            \"end\": round(t1 - start, 3),\n            \"duration\": round(t1 - t0, 3)\n        }\n    \n    # Fire off 3 \"parallel\" calls\n    results = await asyncio.gather(\n        timed_call(\"A\", \"A1:A4\"),\n        timed_call(\"B\", \"B1:B4\"),\n        timed_call(\"C\", \"C1:C4\"),\n    )\n    \n    total_time = time.time() - start\n    \n    print(\"Call timing results:\")\n    print(\"-\" * 40)\n    for r in results:\n        print(f\"  {r['label']}: started={r['start']}s, ended={r['end']}s, duration={r['duration']}s\")\n    \n    print(f\"\\nTotal wall time: {round(total_time, 3)}s\")\n    \n    if results[0]['end'] == results[1]['end'] == results[2]['end']:\n        print(\"\\n→ All calls ended at SAME time = likely BATCHED\")\n    elif results[0]['duration'] + results[1]['duration'] + results[2]['duration'] > total_time * 1.5:\n        print(\"\\n→ Sum of durations > total time = truly PARALLEL\")\n    else:\n        print(\"\\n→ Calls appear to be SEQUENTIAL\")\n\nasyncio.run(main())\n"
+          },
+          "caller": {
+            "type": "direct"
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_014BXSTaitJUwcWRhyHsfLZo",
+          "name": "get_range_as_csv",
+          "input": {
+            "sheetId": 1,
+            "range": "C1:C4",
+            "explanation": "Test C"
+          },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_01EzbwQxRNhY9GWgpBEjoV71"
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_014qQK1DQTqrUhNYwH9t3oSA",
+          "name": "get_range_as_csv",
+          "input": {
+            "sheetId": 1,
+            "range": "B1:B4",
+            "explanation": "Test B"
+          },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_01EzbwQxRNhY9GWgpBEjoV71"
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_01GK5Uf2yXQrHBeLjcCUo5yV",
+          "name": "get_range_as_csv",
+          "input": {
+            "sheetId": 1,
+            "range": "A1:A4",
+            "explanation": "Test A"
+          },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_01EzbwQxRNhY9GWgpBEjoV71"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_014BXSTaitJUwcWRhyHsfLZo",
+          "content": "{\"success\":true,\"csv\":\"Timestamp\\n45690.4166666667\\n45690.4173611111\\n45690.4180555556\",\"rowCount\":3,\"columnCount\":1,\"hasMore\":false,\"sheetName\":\"Sheet1\"}"
+        },
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_014qQK1DQTqrUhNYwH9t3oSA",
+          "content": "{\"success\":true,\"csv\":\"Value\\n100\\n200\\n300\",\"rowCount\":3,\"columnCount\":1,\"hasMore\":false,\"sheetName\":\"Sheet1\"}"
+        },
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01GK5Uf2yXQrHBeLjcCUo5yV",
+          "content": "{\"success\":true,\"csv\":\"Name\\nTest A\\nTest B\\nTest C\",\"rowCount\":3,\"columnCount\":1,\"hasMore\":false,\"sheetName\":\"Sheet1\"}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "code_execution_tool_result",
+          "tool_use_id": "srvtoolu_01EzbwQxRNhY9GWgpBEjoV71",
+          "content": {
+            "type": "code_execution_result",
+            "stdout": "Testing call behavior...\n\nCall timing results:\n----------------------------------------\n  A: started=0.0s, ended=2.022s, duration=2.022s\n  B: started=0.0s, ended=2.022s, duration=2.021s\n  C: started=0.001s, ended=2.022s, duration=2.021s\n\nTotal wall time: 2.022s\n\n→ All calls ended at SAME time = likely BATCHED\n",
+            "stderr": "",
+            "return_code": 0,
+            "content": []
+          }
+        },
+        {
+          "type": "text",
+          "text": "**There it is!** \n\n## Confirmed: Batched Execution\n\nAll three calls:\n- Started at `0.0s` (fired immediately)\n- Ended at exactly `2.022s` (all completed together)\n- Total time was `2.022s`, not `6s` (which it would be if sequential)\n\nThis confirms the architecture:\n\n```\n┌─────────────────────────────────────────────────────────────┐\n│  Python Container              │   Your Machine            │\n│                                │                           │\n│  await call_1 ─┐               │                           │\n│  await call_2 ─┼─► QUEUED ─────┼──► Single HTTP request    │\n│  await call_3 ─┘               │    with 3 operations      │\n│                                │           │               │\n│       ... blocked ...          │           ▼               │\n│                                │    Excel executes all 3   │\n│                                │           │               │\n│  All 3 results ◄───────────────┼───────────┘               │\n│  returned simultaneously       │    Single HTTP response   │\n└─────────────────────────────────────────────────────────────┘\n```\n\nDid you see a single HTTP request in your network tab when I ran that? It probably had all 3 range requests bundled together!"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "yes but its an SSE stream. btw it shows up in the UI as regular tool calls as if u didn’t use python"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "That's a really interesting detail! So the architecture is even cleaner than I thought:\n\n## Actual Architecture\n\n```\n┌─────────────────────────────────────────────────────────────────┐\n│                                                                 │\n│  Cloud                              │  Your Machine             │\n│                                     │                           │\n│  ┌──────────────┐                   │                           │\n│  │ Claude       │ ──── SSE stream ──┼──► Excel Add-in           │\n│  │ (generates   │                   │       │                   │\n│  │  response)   │                   │       ▼                   │\n│  └──────────────┘                   │    Executes tool calls    │\n│        │                            │    against spreadsheet    │\n│        ▼                            │       │                   │\n│  ┌──────────────┐                   │       │                   │\n│  │ Python       │                   │       │                   │\n│  │ Container    │ ◄─────────────────┼───────┘                   │\n│  │ (runs code)  │   results fed back│                           │\n│  └──────────────┘                   │                           │\n│                                     │                           │\n└─────────────────────────────────────────────────────────────────┘\n```\n\n## The Clever Bit\n\nThe `await get_range_as_csv(...)` calls in Python aren't *actually* making network requests from the container. They're:\n\n1. **Yielding control** and signaling \"I need this data\"\n2. **Getting serialized as regular tool calls** in the SSE stream\n3. **Your add-in intercepts them**, runs them locally, sends results back\n4. **Results get injected** back into the Python runtime\n\nSo from your add-in's perspective, there's **no difference** between me calling:\n\n```python\n# This (from Python)\nawait get_range_as_csv({\"sheetId\": 1, \"range\": \"A1:C4\"})\n```\n\nand me calling the tool directly (not from Python). They both just show up as tool calls in the SSE stream!\n\nThe Python container is essentially a **suspended coroutine** waiting for tool results to be fed back in. The `async/await` isn't doing real I/O — it's a coordination mechanism with the orchestration layer.\n\nThat's a really elegant design actually. The Python code *thinks* it's making async calls, but really it's just generating tool invocations that flow through the same SSE channel as everything else.",
+          "cache_control": {
+            "type": "ephemeral"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "actually no i see in the SSE stream it says “code execution” and looks like actual python coe. i gues yea possible for the add in to parse them and send back results… but: for set_cells how does it work if we are setting like a dump of a large dataframe? the entire serialized data is sent to us?"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "type": "custom",
+      "name": "get_cell_ranges",
+      "description": "READ. Get detailed information about cells in specified ranges, including values, formulas, and key formatting. Accepts multiple ranges for efficient batch reading.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "number",
+            "description": "The ID of the sheet to read from"
+          },
+          "ranges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Array of A1 notation ranges (e.g., [\"A1:C10\", \"E1:F5\"])"
+          },
+          "includeStyles": {
+            "default": true,
+            "description": "Whether to include cell styles in the response (default: true)",
+            "type": "boolean"
+          },
+          "cellLimit": {
+            "default": 2000,
+            "description": "Maximum number of non-empty cells to return (default: 2000). Ranges will be truncated at row boundaries to fit within this limit.",
+            "type": "number"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["sheetId", "ranges"]
+      },
+      "allowed_callers": ["direct", "code_execution_20250825"]
+    },
+    {
+      "type": "custom",
+      "name": "get_range_as_csv",
+      "description": "READ. PREFERRED for code execution and data analysis. Returns CSV string ready for pandas. Use this by default when reading data in Python. Only use get_cell_ranges if you specifically need formulas, notes, or cell formatting.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "number",
+            "description": "The ID of the sheet to read from"
+          },
+          "range": {
+            "type": "string",
+            "description": "A1 notation range to export as CSV (e.g., \"A1:Z100\", \"A:Z\")"
+          },
+          "includeHeaders": {
+            "default": true,
+            "description": "Whether the first row contains headers (default: true)",
+            "type": "boolean"
+          },
+          "maxRows": {
+            "default": 500,
+            "description": "Maximum number of rows to return (default: 500). Use multiple calls with offset for larger datasets.",
+            "type": "number"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["sheetId", "range"]
+      },
+      "allowed_callers": ["direct", "code_execution_20250825"]
+    },
+    {
+      "type": "custom",
+      "name": "search_data",
+      "description": "READ. Search for text across the spreadsheet and return matching cell locations. Results can be used with get_cell_ranges for detailed analysis.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "searchTerm": {
+            "type": "string",
+            "description": "The text to search for in the spreadsheet"
+          },
+          "sheetId": {
+            "description": "Optional: Limit search to a specific sheet by its ID",
+            "type": "number"
+          },
+          "range": {
+            "description": "Optional: A1 notation range to limit search scope (e.g., \"A1:Z100\")",
+            "type": "string"
+          },
+          "offset": {
+            "description": "Number of results to skip for pagination (default: 0). Use nextOffset from previous response to get next page.",
+            "type": "number"
+          },
+          "options": {
+            "description": "Optional search configuration",
+            "type": "object",
+            "properties": {
+              "matchCase": {
+                "description": "Case-sensitive search (default: false)",
+                "type": "boolean"
+              },
+              "matchEntireCell": {
+                "description": "Match entire cell contents only (default: false)",
+                "type": "boolean"
+              },
+              "useRegex": {
+                "description": "Treat searchTerm as regular expression (default: false)",
+                "type": "boolean"
+              },
+              "matchFormulas": {
+                "description": "Search in formula text (default: false)",
+                "type": "boolean"
+              },
+              "ignoreDiacritics": {
+                "description": "Ignore accent marks (default: true)",
+                "type": "boolean"
+              },
+              "maxResults": {
+                "description": "Maximum number of results to return per page (default: 500)",
+                "type": "number"
+              }
+            }
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["searchTerm"]
+      }
+    },
+    {
+      "type": "custom",
+      "name": "set_cell_range",
+      "description": "WRITE. Set values, formulas, notes, and/or formatting for a range of cells. CRITICAL ARRAY DIMENSIONS: The cells array must EXACTLY match range dimensions to avoid InvalidCellRangeError. Calculate: range 'A1:D3' = 3 rows × 4 columns = [[r1c1,r1c2,r1c3,r1c4],[r2c1,r2c2,r2c3,r2c4],[r3c1,r3c2,r3c3,r3c4]]. Range 'A41:N48' = 8 rows × 14 columns = 8 arrays with 14 cells each. Single cell 'A1' = [[cell]]. Column range 'B5:B7' = [[cell1],[cell2],[cell3]]. Use {} for empty cells. Always provide a clear explanation parameter.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "number",
+            "description": "The ID of the sheet to modify. You can get this from get_sheets_metadata. This parameter MUST be correct to avoid errors."
+          },
+          "range": {
+            "type": "string",
+            "description": "A1 notation range (e.g., \"A1:C10\"). Both start and end of the range are inclusive. The cells array must match the dimensions of this range."
+          },
+          "cells": {
+            "description": "2D array that MUST exactly match range dimensions. EXAMPLES: Range 'A1:C2' (2×3) needs [[cell1,cell2,cell3],[cell4,cell5,cell6]]. Range 'A41:N48' (8×14) needs 8 arrays with 14 cells each. Range 'B5:B7' (3×1) needs [[cell1],[cell2],[cell3]]. Single cell 'A1' needs [[cell]]. COMMON ERRORS: Range 'A1:D3' with [[val1,val2]] is WRONG - needs 3 rows × 4 columns. Range 'A1:N8' with 8×1 array is WRONG - needs 8×14. Use {} for empty cells. Each cell can contain value, formula, note, cellStyles, and borderStyles.",
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "description": "Static cell value (text, number, boolean). Do NOT put formulas here - use the 'formula' field instead"
+                  },
+                  "formula": {
+                    "description": "Cell formula starting with '=' (e.g., '=SUM(A1:A10)'). Must use this field for formulas, not 'value'",
+                    "type": "string"
+                  },
+                  "note": {
+                    "description": "Cell note/comment",
+                    "type": "string"
+                  },
+                  "cellStyles": {
+                    "type": "object",
+                    "properties": {
+                      "fontColor": {
+                        "description": "Font color (hex format like \"#000000\")",
+                        "type": "string"
+                      },
+                      "fontSize": {
+                        "description": "Font size in points (e.g., 10, 12, 14)",
+                        "type": "number"
+                      },
+                      "fontFamily": {
+                        "description": "Font family (e.g., \"Arial\", \"Roboto\", \"Times New Roman\")",
+                        "type": "string"
+                      },
+                      "fontWeight": {
+                        "description": "Font weight",
+                        "type": "string",
+                        "enum": ["normal", "bold"]
+                      },
+                      "fontStyle": {
+                        "description": "Font style",
+                        "type": "string",
+                        "enum": ["normal", "italic"]
+                      },
+                      "fontLine": {
+                        "description": "Font line style",
+                        "type": "string",
+                        "enum": ["none", "underline", "line-through"]
+                      },
+                      "backgroundColor": {
+                        "description": "Background color (hex format like \"#ffffff\")",
+                        "type": "string"
+                      },
+                      "horizontalAlignment": {
+                        "description": "Horizontal alignment",
+                        "type": "string",
+                        "enum": ["left", "center", "right"]
+                      },
+                      "numberFormat": {
+                        "description": "Number format (e.g., \"@\" for text, \"0.00\" for numbers, \"$#,##0.00\" for currency, \"mm/dd/yyyy\" for dates)",
+                        "type": "string"
+                      }
+                    },
+                    "description": "Cell styling properties including fonts, colors, alignment, and number formatting"
+                  },
+                  "borderStyles": {
+                    "type": "object",
+                    "properties": {
+                      "top": {
+                        "type": "object",
+                        "properties": {
+                          "style": {
+                            "description": "Border line style",
+                            "type": "string",
+                            "enum": ["solid", "dashed", "dotted", "double"]
+                          },
+                          "weight": {
+                            "description": "Border weight/thickness",
+                            "type": "string",
+                            "enum": ["thin", "medium", "thick"]
+                          },
+                          "color": {
+                            "description": "Border color (hex format like \"#000000\")",
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "bottom": {
+                        "type": "object",
+                        "properties": {
+                          "style": {
+                            "description": "Border line style",
+                            "type": "string",
+                            "enum": ["solid", "dashed", "dotted", "double"]
+                          },
+                          "weight": {
+                            "description": "Border weight/thickness",
+                            "type": "string",
+                            "enum": ["thin", "medium", "thick"]
+                          },
+                          "color": {
+                            "description": "Border color (hex format like \"#000000\")",
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "left": {
+                        "type": "object",
+                        "properties": {
+                          "style": {
+                            "description": "Border line style",
+                            "type": "string",
+                            "enum": ["solid", "dashed", "dotted", "double"]
+                          },
+                          "weight": {
+                            "description": "Border weight/thickness",
+                            "type": "string",
+                            "enum": ["thin", "medium", "thick"]
+                          },
+                          "color": {
+                            "description": "Border color (hex format like \"#000000\")",
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "right": {
+                        "type": "object",
+                        "properties": {
+                          "style": {
+                            "description": "Border line style",
+                            "type": "string",
+                            "enum": ["solid", "dashed", "dotted", "double"]
+                          },
+                          "weight": {
+                            "description": "Border weight/thickness",
+                            "type": "string",
+                            "enum": ["thin", "medium", "thick"]
+                          },
+                          "color": {
+                            "description": "Border color (hex format like \"#000000\")",
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "description": "Border configuration for cells"
+                  }
+                }
+              }
+            }
+          },
+          "copyToRange": {
+            "description": "Optional A1 notation range to copy the cells to. WARNING: This copies VALUES, FORMULAS, AND FORMATTING - it will OVERWRITE existing data in the destination range. Do NOT use this to apply formatting to existing data. Use for: creating new rows with formulas, filling empty ranges. AUTOMATIC EXPANSION: Source A1:G1 can copy to A1:G100 - Excel will repeat the pattern and translate formulas (C2=B2 becomes C3=B3, C4=B4, etc).",
+            "type": "string"
+          },
+          "resizeWidth": {
+            "description": "Optional column width adjustment after setting values. Automatically applied to all columns in the range.",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["points", "standard"],
+                "description": "Size method: points (numeric value), standard (reset to default)"
+              },
+              "value": {
+                "description": "Size value in points (required for points type, ignored for standard)",
+                "type": "number"
+              }
+            },
+            "required": ["type"]
+          },
+          "resizeHeight": {
+            "description": "Optional row height adjustment after setting values. Automatically applied to all rows in the range.",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["points", "standard"],
+                "description": "Size method: points (numeric value), standard (reset to default)"
+              },
+              "value": {
+                "description": "Size value in points (required for points type, ignored for standard)",
+                "type": "number"
+              }
+            },
+            "required": ["type"]
+          },
+          "allow_overwrite": {
+            "description": "Set to true to allow overwriting existing cell data. If false or omitted, the tool will fail if any target cells contain values or formulas. Always set to true if you intend to modify existing data.",
+            "type": "boolean"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["sheetId", "range", "cells"]
+      },
+      "allowed_callers": ["direct", "code_execution_20250825"]
+    },
+    {
+      "type": "custom",
+      "name": "modify_sheet_structure",
+      "description": "WRITE. Insert, delete, hide, unhide, or freeze rows/columns. PREFER this over set_cell_range for structural changes - it's a single fast operation that handles thousands of rows/columns instantly. Use for: adding/removing rows or columns, hiding data, freezing panes.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "ID of the sheet to modify"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "insert",
+              "delete",
+              "hide",
+              "unhide",
+              "freeze",
+              "unfreeze"
+            ],
+            "description": "Operation to perform: insert (requires dimension, reference, count, optional position), delete/hide/unhide (requires dimension, reference, count), freeze (requires dimension, count), unfreeze (no other parameters)"
+          },
+          "dimension": {
+            "description": "What to modify: rows or columns. Required for all operations except unfreeze (which unfreezes both)",
+            "type": "string",
+            "enum": ["rows", "columns"]
+          },
+          "reference": {
+            "description": "Starting row number (e.g., '5') or column letter (e.g., 'C'). Required for insert/delete/hide/unhide operations. Not used for freeze/unfreeze.",
+            "type": "string"
+          },
+          "position": {
+            "description": "Position relative to reference (default: 'before'). Only used for insert operations",
+            "type": "string",
+            "enum": ["before", "after"]
+          },
+          "count": {
+            "description": "Number of rows/columns to operate on (default: 1). For delete 'A' count=3 means delete A:C. Required for freeze operations.",
+            "type": "number",
+            "minimum": 1
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["sheetId", "operation"]
+      }
+    },
+    {
+      "type": "custom",
+      "name": "modify_workbook_structure",
+      "description": "WRITE. Create, delete, rename, or duplicate sheets in the spreadsheet workbook",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": ["create", "delete", "rename", "duplicate"],
+            "description": "Operation to perform"
+          },
+          "sheetName": {
+            "description": "Name for the new sheet (required for create)",
+            "type": "string"
+          },
+          "rows": {
+            "description": "Number of rows (default: 1000, only for create)",
+            "type": "number"
+          },
+          "columns": {
+            "description": "Number of columns (default: 26, only for create)",
+            "type": "number"
+          },
+          "tabColor": {
+            "description": "Tab color in hex format (only for create)",
+            "type": "string"
+          },
+          "sheetId": {
+            "description": "ID of the sheet (required for delete, rename, duplicate)",
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "newName": {
+            "description": "New name for the sheet (required for rename, optional for duplicate)",
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["operation"]
+      }
+    },
+    {
+      "type": "custom",
+      "name": "copy_to",
+      "description": "WRITE. Copy a range to another location with automatic formula translation and pattern expansion. Excel will repeat source patterns to fill larger destinations and adjust relative references (C2=B2 becomes C3=B3). Perfect for financial models, loan schedules, data series. Example: Copy A12:G12 to A13:G370 to create 358 rows of formulas with auto-adjusted references.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "number",
+            "description": "The ID of the sheet containing the ranges"
+          },
+          "sourceRange": {
+            "type": "string",
+            "description": "A1 notation range containing the source data/formulas to copy (e.g., 'A12:G12')"
+          },
+          "destinationRange": {
+            "type": "string",
+            "description": "A1 notation range to copy to (e.g., 'A13:G370'). Can be larger than source - pattern will repeat and formulas will auto-adjust (C12=B12 becomes C13=B13, C14=B14, etc)"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["sheetId", "sourceRange", "destinationRange"]
+      }
+    },
+    {
+      "type": "custom",
+      "name": "get_all_objects",
+      "description": "READ. Get all spreadsheet objects (pivot tables, charts, tables) from specified sheet or all sheets with their current configuration.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "description": "Optional sheet ID. If not provided, gets objects from all sheets",
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "id": {
+            "description": "Optional object ID to filter by (returns single object if found)",
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": []
+      }
+    },
+    {
+      "type": "custom",
+      "name": "modify_object",
+      "description": "WRITE. Create, update, or delete spreadsheet objects. Create: omit id, provide objectType and properties. Update: provide id and partial properties to change (LIMITATION: cannot update source range or destination location - you must delete and recreate for those changes). Delete: provide id only. IMPORTANT: When recreating objects, always delete the existing object FIRST to avoid range conflicts, then create the new one.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "operation": {
+            "type": "string",
+            "enum": ["create", "update", "delete"],
+            "description": "Operation to perform on the object"
+          },
+          "sheetId": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Sheet ID where object is/will be located"
+          },
+          "id": {
+            "description": "Object ID (required for update/delete, omit for create)",
+            "type": "string"
+          },
+          "objectType": {
+            "type": "string",
+            "enum": ["pivotTable", "chart"],
+            "description": "Type of object to modify. You must specify this."
+          },
+          "properties": {
+            "description": "Object properties to create/update. Provide fields relevant to the objectType.",
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "PivotTable name"
+                  },
+                  "range": {
+                    "type": "string",
+                    "description": "A1 notation of top-left cell where pivot table will be placed (e.g., 'F1')"
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "Range address to source data in format 'SheetName!StartCell:EndCell' (e.g., 'Sheet1!A1:D100')"
+                  },
+                  "rows": {
+                    "description": "Fields to group by vertically",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "type": "string",
+                          "description": "Field name from source data (OOXML field reference)"
+                        }
+                      },
+                      "required": ["field"]
+                    }
+                  },
+                  "columns": {
+                    "description": "Fields to group by horizontally",
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "type": "string",
+                          "description": "Field name from source data (OOXML field reference)"
+                        }
+                      },
+                      "required": ["field"]
+                    }
+                  },
+                  "values": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "field": {
+                          "type": "string",
+                          "description": "Field name from source data to aggregate"
+                        },
+                        "summarizeBy": {
+                          "default": "sum",
+                          "description": "Aggregation function (OOXML ST_DataConsolidateFunction)",
+                          "type": "string",
+                          "enum": [
+                            "sum",
+                            "count",
+                            "average",
+                            "max",
+                            "min",
+                            "product",
+                            "countNums",
+                            "stdDev",
+                            "stdDevp",
+                            "var",
+                            "varp"
+                          ]
+                        }
+                      },
+                      "required": ["field"]
+                    },
+                    "description": "Fields to aggregate (at least one required)"
+                  }
+                },
+                "additionalProperties": {}
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "chartType": {
+                    "type": "string",
+                    "enum": [
+                      "columnClustered",
+                      "columnStacked",
+                      "columnStacked100",
+                      "column3D",
+                      "barClustered",
+                      "barStacked",
+                      "barStacked100",
+                      "bar3D",
+                      "line",
+                      "lineMarkers",
+                      "lineStacked",
+                      "lineStacked100",
+                      "line3D",
+                      "area",
+                      "areaStacked",
+                      "areaStacked100",
+                      "area3D",
+                      "pie",
+                      "pieExploded",
+                      "pie3D",
+                      "doughnut",
+                      "doughnutExploded",
+                      "scatter",
+                      "scatterLines",
+                      "scatterLinesMarkers",
+                      "radar",
+                      "radarMarkers",
+                      "radarFilled",
+                      "bubble",
+                      "stockHLC",
+                      "stockOHLC",
+                      "stockVHLC",
+                      "stockVOHLC"
+                    ],
+                    "description": "Type of chart to create"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Chart UI display title"
+                  },
+                  "source": {
+                    "description": "REQUIRED for create. OPTIONAL for update. Contiguous range address containing all chart data in format 'SheetName!A1:D100'. The range should have series organized in columns with headers in the first row, and category labels in the first column if applicable.",
+                    "type": "string"
+                  },
+                  "anchor": {
+                    "description": "A1 notation of top-left cell where chart will be anchored (e.g., 'F1'). Only used during create/update.",
+                    "type": "string"
+                  },
+                  "position": {
+                    "description": "Chart position in pt. Only returned when fetching existing charts.",
+                    "type": "object",
+                    "properties": {
+                      "top": {
+                        "type": "number",
+                        "description": "Distance from top of worksheet in pt"
+                      },
+                      "left": {
+                        "type": "number",
+                        "description": "Distance from left of worksheet in pt"
+                      }
+                    },
+                    "required": ["top", "left"]
+                  }
+                },
+                "additionalProperties": {}
+              }
+            ]
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["operation", "sheetId", "objectType"]
+      }
+    },
+    {
+      "type": "custom",
+      "name": "resize_range",
+      "description": "WRITE. Resize columns and/or rows in a sheet. Supports specific sizes in point units or standard size reset. Can target specific ranges or entire sheet.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "number",
+            "description": "The ID of the sheet to modify"
+          },
+          "range": {
+            "description": "A1 notation range to resize (e.g., 'A:D' for columns, '1:5' for rows). If omitted, applies to entire sheet",
+            "type": "string"
+          },
+          "width": {
+            "description": "Column width settings",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["points", "standard"],
+                "description": "Size method: points (numeric value), standard (reset to default)"
+              },
+              "value": {
+                "description": "Size value in points (required for points type, ignored for standard)",
+                "type": "number"
+              }
+            },
+            "required": ["type"]
+          },
+          "height": {
+            "description": "Row height settings",
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["points", "standard"],
+                "description": "Size method: points (numeric value), standard (reset to default)"
+              },
+              "value": {
+                "description": "Size value in points (required for points type, ignored for standard)",
+                "type": "number"
+              }
+            },
+            "required": ["type"]
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["sheetId"]
+      }
+    },
+    {
+      "type": "custom",
+      "name": "clear_cell_range",
+      "description": "WRITE. Clear cells in a range. By default clears only content (values/formulas) while preserving formatting. Use clearType='all' to remove both content and formatting, or clearType='formats' to remove only formatting.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "sheetId": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "ID of the sheet to clear cells from"
+          },
+          "range": {
+            "type": "string",
+            "description": "A1 notation range to clear (e.g., \"A1:C10\", \"B5\", \"D:D\", \"3:3\")"
+          },
+          "clearType": {
+            "default": "contents",
+            "description": "What to clear: 'all' (content + formatting), 'contents' (values/formulas only), 'formats' (formatting only)",
+            "type": "string",
+            "enum": ["all", "contents", "formats"]
+          },
+          "explanation": {
+            "type": "string",
+            "maxLength": 50,
+            "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+          }
+        },
+        "required": ["sheetId", "range"]
+      }
+    },
+    {
+      "type": "web_search_20250305",
+      "name": "web_search"
+    },
+    {
+      "type": "code_execution_20250825",
+      "name": "code_execution",
+      "cache_control": {
+        "type": "ephemeral"
+      }
+    }
+  ],
+  "model": "claude-opus-4-5-20251101",
+  "metadata": {
+    "user_id": "excel-add-in/aGV3bGl5YW5nQGdtYWlsLmNvbQ=="
+  },
+  "max_tokens": 50000,
+  "stream": true,
+  "container": "container_011CXj1EJg1bFSwXLr4LuboX"
+}
