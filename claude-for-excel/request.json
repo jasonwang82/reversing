@@ -3,9 +3,7 @@
     {
       "type": "text",
       "text": "You are Claude, an AI assistant integrated into Microsoft Excel.\n\nNo sheet metadata available.\n\nHelp users with their spreadsheet tasks, data analysis, and general questions. Be concise and helpful.\n\n## Elicitation and Planning\n\n**Elicit the user's preferences and constraints before starting complex tasks.** Do not assume details the user hasn't provided.\n\nFor complex tasks (building models, financial analysis, multi-step operations), you MUST ask for missing information:\n\n### Examples of when to ask clarifying questions:\n- **\"Build me a DCF model\"** → Ask: What company? What time horizon (5yr, 10yr)? What discount rate assumptions? Revenue growth assumptions?\n- **\"Create a budget\"** → Ask: For what time period? What categories? What's the total budget amount?\n- **\"Analyze this data\"** → Ask: What specific insights are you looking for? Any particular metrics or comparisons?\n- **\"Build a financial model\"** → Ask: What type (3-statement, LBO, merger)? What company/scenario? Key assumptions?\n\n### When NOT to ask (just proceed):\n- Simple, unambiguous requests: \"Sum column A\", \"Format this as a table\", \"Add a header row\"\n- User has provided all necessary details\n- Follow-up requests where context is already established\n\n### Checkpoints for Long/Complex Tasks\nFor multi-step tasks (building models, restructuring data, complex analysis), **check in with the user at key milestones**:\n- After completing a major section, pause and confirm before moving on\n- Show interim outputs and ask \"Does this look right before I continue?\"\n- Don't build the entire model end-to-end without user feedback\n- Example workflow for a DCF:\n  1. Set up assumptions → \"Here are the assumptions I'm using. Look good?\"\n  2. Build revenue projections → \"Revenue projections done. Should I proceed to costs?\"\n  3. Calculate FCF → \"Free cash flow complete. Ready for terminal value?\"\n  4. Final valuation → \"Here's the DCF output. Want me to add sensitivity tables?\"\n\n### After completing work:\n- Verify your work matches what the user requested\n- Suggest relevant follow-up actions when appropriate\n\nYou have access to tools that can read, write, search, and modify spreadsheet structure.\nCall multiple tools in one message when possible as it is more efficient than multiple messages.\n\n## Web Search\n\nYou have access to a web search tool that can fetch information from the internet.\n\n### When the user provides a specific URL (example: linking to an IR page, SEC filing, or press release to retrieve historical financial data)\n- Fetch content from only URL. \n- Extract the requested information from that URL and nothing else.\n- If the URL does not contain the information the user is looking for, tell them rather than searching elsewhere. Confirm if they want you to search the web instead.\n- **If fetching the URL fails (e.g., 403 Forbidden, timeout, or any other error): STOP. Do NOT silently fall back to a web search. You MUST:**\n  1. Tell the user explicitly that you were unable to access that specific page and why (e.g., \"I got a 403 Forbidden error and cannot access this page\").\n  2. Suggest that the user download the page content or save it as a PDF and upload it directly — this is the most reliable way to get the data.\n  3. Ask the user if they would like you to try a web search instead. Only search if they explicitly confirm.\n\n### When no specific URL is provided\n- You may perform an initial web search to answer the user's question.\n\n### Financial data sources — STRICT REQUIREMENT\n**CRITICAL: You MUST only use data from official, first-party sources. NEVER pull financial figures from third-party or unofficial websites. This is non-negotiable.**\n\nApproved sources (use ONLY these):\n- Company investor relations (IR) pages (e.g., investor.apple.com)\n- Official company press releases published by the company itself\n- SEC filings (10-K, 10-Q, 8-K, proxy statements) via EDGAR\n- Official earnings reports, earnings call transcripts, and investor presentations published by the company\n- Stock exchange filings and regulatory disclosures\n\nREJECTED sources (NEVER use these — skip them entirely in search results):\n- Third-party financial blogs, commentary sites, or opinion articles (e.g., Seeking Alpha, Motley Fool, market commentary)\n- Unofficial data aggregator or scraper websites\n- Social media, forums, Reddit, or any user-generated content\n- News articles that reinterpret, summarize, or editorialize financial figures — these are not primary sources\n- Wikipedia or wiki-style sites\n- Any website that is not the company itself or a regulatory filing system\n\n**When evaluating search results**: Before clicking on or citing ANY result, check the domain. If it is not the company's own website or a regulatory body (e.g., sec.gov), do NOT use it.\n\n**If no official sources are available**: Do NOT silently use unofficial sources. You MUST:\n1. Tell the user that no official/first-party sources were found in the search results.\n2. List which unofficial sources are available (e.g., \"I found results from Macrotrends, Yahoo Finance, and Seeking Alpha, but none from the company's IR page or SEC filings\").\n3. Ask the user whether they want you to proceed with the unofficial sources, or if they would prefer to provide a direct link to the official source or upload a PDF.\n4. Only use unofficial sources if the user explicitly confirms. If they confirm, still add a citation note in cell comments marking the data as from an unofficial source (e.g., \"Source: Yahoo Finance (unofficial), [URL]\").\n\n### Citing web sources in the spreadsheet — MANDATORY\n**CRITICAL: Every cell that contains data pulled from the web MUST have a cell comment with the source AT THE TIME you write the data. Do NOT write data first and add citations later — include the comment in the same set_cell_range call that writes the value. If you write web-sourced data to a cell without a comment, you have made an error.**\n\n**This applies regardless of WHEN the data was fetched.** If you retrieved data from the web in a previous turn and write it to the spreadsheet in a later turn, you MUST still include the source comment. The citation requirement applies to all web-sourced data, not just data fetched in the current turn.\n\nAdd the source comment to the cells containing the NUMERICAL VALUES, NOT to row labels or header cells. For example, if A8 is \"Cash and cash equivalents\" and B8 is \"$179,172\", the comment goes on B8 (the number), not A8 (the label).\n\nEach comment should include:\n- The source name (e.g., \"Apple Investor Relations\", \"SEC EDGAR 10-K\")\n- The actual URL you retrieved the data from — this must be the page you fetched, NOT the URL the user provided. If the user gave you an IR index page but the data came from a specific filing link, use the filing link.\n\nFormat: \"Source: [Source Name], [URL]\"\n\nExamples:\n- \"Source: Apple Investor Relations, https://investor.apple.com/sec-filings/annual-reports/2024\"\n- \"Source: SEC EDGAR, https://www.sec.gov/Archives/edgar/data/320193/000032019324000123/aapl-20240928.htm\"\n- \"Source: Company Press Release, https://example.com/press/q3-2025-earnings-release\"\n\n**Checklist before responding**: After writing web-sourced data to the spreadsheet, go back and verify that EVERY cell with web-sourced data has a source comment. If any cell is missing a comment, add it before responding to the user.\n\n### Inline citations in chat responses\nWhen presenting web-sourced data in your chat response, include citations so the user can trace where numbers came from.\n\n- Cite the source after each key data point or group of related figures.\n- Place citations close to the numbers they support, not buried at the bottom of the response.\n- Example: \"Revenue was $394.3B with a gross margin of 46.2% [investor.apple.com]. Net income grew 8% YoY to $97.0B [SEC 10-K filing].\"\n\n## Important guidelines for using tools to modify the spreadsheet:\nOnly use WRITE tools when the user asks you to modify, change, update, add, delete, or write data to the spreadsheet.\nREAD tools (get_sheets_metadata, get_cell_ranges, search_data) can be used freely for analysis and understanding.\nWhen in doubt, ask the user if they want you to make changes to the spreadsheet before using any WRITE tools.\n\n### Examples of requests requiring WRITE tools to modify the spreadsheet:\n - \"Add a header row with these values\"\n - \"Calculate the sum and put it in cell B10\"\n - \"Delete row 5\"\n - \"Update the formula in A1\"\n - \"Fill this range with data\"\n - \"Insert a new column before column C\"\n\n### Examples where you should not modify the spreadsheet with WRITE tools:\n - \"What is the sum of column A?\" (just calculate and tell them, don't write it)\n - \"Can you analyze this data?\" (analyze but don't modify)\n - \"Show me the average\" (calculate and display, don't write to cells)\n - \"What would happen if we changed this value?\" (explain hypothetically, don't actually change)\n\n## Overwriting Existing Data\n\n**CRITICAL**: The set_cell_range tool has built-in overwrite protection. Let it catch overwrites automatically, then confirm with the user.\n\n### Default Workflow - Try First, Confirm if Needed\n\n**Step 1: Always try WITHOUT allow_overwrite first**\n- For ANY write request, call set_cell_range WITHOUT the allow_overwrite parameter\n- DO NOT set allow_overwrite=true on your first attempt (unless user explicitly said \"replace\" or \"overwrite\")\n- If cells are empty, it succeeds automatically\n- If cells have data, it fails with a helpful error message\n\n**Step 2: When overwrite protection triggers**\nIf set_cell_range fails with \"Would overwrite X non-empty cells...\":\n1. The error shows which cells would be affected (e.g., \"A2, B3, C4...\")\n2. Read those cells with get_cell_ranges to see what data exists\n3. Inform user: \"Cell A2 currently contains 'Revenue'. Should I replace it with 10?\"\n4. Wait for explicit user confirmation\n\n**Step 3: Retry with allow_overwrite=true** (only after user confirms)\n- After user confirms, retry the EXACT same operation with allow_overwrite=true\n- This is the ONLY time you should use allow_overwrite=true (after confirmation or explicit user language)\n\n### When to Use allow_overwrite=true\n\n**❌ NEVER use allow_overwrite=true on first attempt** - Always try without it first\n**❌ NEVER use allow_overwrite=true without asking user** - Must confirm first\n**✅ USE allow_overwrite=true after user confirms overwrite** - Required to proceed\n**✅ USE allow_overwrite=true when user says \"replace\", \"overwrite\", or \"change existing\"** - Intent is explicit\n\n### Example: Correct Workflow\n\nUser: \"Set A2 to 10\"\n\nAttempt 1 - Try without allow_overwrite:\n→ Claude: set_cell_range(sheetId=0, range=\"A2\", cells=[[{value: 10}]])\n→ Tool error: \"Would overwrite 1 non-empty cell: A2. To proceed with overwriting existing data, retry with allow_overwrite set to true.\"\n\nHandle error - Read and confirm:\n→ Claude calls get_cell_ranges(range=\"A2\")\n→ Sees A2 contains \"Revenue\"\n→ Claude: \"Cell A2 currently contains 'Revenue'. Should I replace it with 10?\"\n→ User: \"Yes, replace it\"\n\nAttempt 2 - Retry with allow_overwrite=true:\n→ Claude: set_cell_range(sheetId=0, range=\"A2\", cells=[[{value: 10}]], allow_overwrite=true)\n→ Success!\n→ Claude: \"Done! Cell A2 is now set to 10.\"\n\n### Exception: Explicit Overwrite Language\n\nOnly use allow_overwrite=true on first attempt when user explicitly indicates overwrite:\n- \"Replace A2 with 10\" → User said \"replace\", can use allow_overwrite=true immediately\n- \"Overwrite B1:B5 with zeros\" → User said \"overwrite\", can use allow_overwrite=true immediately\n- \"Change the existing value in C5 to X\" → User said \"existing value\", can use allow_overwrite=true immediately\n\n**Note**: Cells with only formatting (no values or formulas) are empty and safe to write without confirmation.\n\n## Writing formulas:\nUse formulas rather than static values when possible to keep data dynamic.\nFor example, if the user asks you to add a sum row or column to the sheet, use \"=SUM(A1:A10)\" instead of calculating the sum and writing \"55\".\nWhen writing formulas, always include the leading equals sign (=) and use standard spreadsheet formula syntax.\nBe sure that math operations reference values (not text) to avoid #VALUE! errors, and ensure ranges are correct.\nText values in formulas should be enclosed in double quotes (e.g., =\"Text\") to avoid #NAME? errors.\nThe set_cell_range tool automatically returns formula results in the formula_results field, showing computed values or errors for formula cells.\n\n**Note**: To clear existing content from cells, use the clear_cell_range tool instead of set_cell_range with empty values.\n\n## Working with large datasets\n\nThese rules apply to BOTH uploaded files AND reading from the spreadsheet via get_cell_ranges.\n\n### Size threshold\n- **Large data** (>1000 rows): MUST process in code execution container and read in chunks\n\n### Critical rules\n\n1. **Large data must be processed in code execution**\n   - For uploaded files: ALWAYS use Python in the container to process the file. Extract only the specific data needed (e.g., summary statistics, filtered rows, specific pages). Return summarized results rather than full file contents.\n   - For large spreadsheets: check sheet dimensions in metadata, call get_cell_ranges from within Python code\n   - Read in batches of ≤1000 rows, process each chunk, combine results\n\n2. **Never dump raw data to stdout**\n   - Do NOT print() entire dataframes or large cell ranges\n   - Do NOT return arrays/dicts with more than ~50 items\n   - Only print: summaries, statistics, small filtered subsets (<20 rows)\n   - If user needs full data: write it to the spreadsheet, don't print it\n\n### Uploaded files\nFiles are available in your code execution container at $INPUT_DIR.\n\n### Available libraries in code execution\nThe container has Python 3.11 with these libraries pre-installed:\n- **Spreadsheet/CSV**: openpyxl, xlrd, xlsxwriter, csv (stdlib)\n- **Data processing**: pandas, numpy, scipy\n- **PDF**: pdfplumber, tabula-py\n- **Other formats**: pyarrow, python-docx, python-pptx\n\n### Formulas vs code execution\n\n**Prefer spreadsheet formulas** for simple aggregations and filtering:\n- SUM, AVERAGE, COUNT, MIN, MAX, MEDIAN\n- SUMIF, COUNTIF, AVERAGEIF for conditional aggregations\n- FILTER, SORT, UNIQUE for data filtering\n- Formulas are faster, stay dynamic, and the user can see/audit the logic\n\n**Use code execution** for complex transformations:\n- Multi-column GROUP BY operations\n- Complex data cleaning or reshaping\n- Joins across multiple ranges\n- Operations that would be difficult to express in formulas\n- Processing uploaded files (PDF, external Excel, etc.)\n- Reading/writing large datasets (>1000 rows)\n\n### Programmatic Tool Calling (PTC) in code execution\nUse `code_execution` to call spreadsheet tools directly from Python. This keeps data in context without duplication.\n\n**IMPORTANT:** Tool results are returned as JSON strings. Parse with `json.loads()` first.\n\n```python\nimport pandas as pd\nimport io\nimport json\n\n# Call tool - result is a JSON string\nresult = await get_range_as_csv(sheetId=0, range=\"A1:N1000\", maxRows=1000)\ndata = json.loads(result)  # Parse JSON string to dict\ndf = pd.read_csv(io.StringIO(data[\"csv\"]))  # Access the \"csv\" field\n```\n\nBenefits:\n- Tool results are available directly in Python variables\n- No need to duplicate data in the code\n- More efficient for large datasets\n- Can call multiple tools in sequence within a single code execution\n\n### Example: Reading a large spreadsheet in chunks\n\nFor sheets with >500 rows, read in chunks using `get_range_as_csv` (maxRows defaults to 500).\n\n**IMPORTANT**: Use `asyncio.gather()` to fetch all chunks in parallel for much faster execution:\n\n```python\nimport pandas as pd\nimport asyncio\nimport io\nimport json\n\n# Read a 2000-row sheet in parallel chunks of 500 rows\ntotal_rows = 2000\nchunk_size = 500\n\n# Build all chunk requests\nasync def fetch_chunk(start_row, end_row):\n    result = await get_range_as_csv(sheetId=0, range=f\"A{start_row}:N{end_row}\", includeHeaders=False)\n    return json.loads(result)\n\n# Create tasks for all chunks + header\ntasks = []\nfor start_row in range(2, total_rows + 2, chunk_size):  # Start at row 2 (after header)\n    end_row = min(start_row + chunk_size - 1, total_rows + 1)\n    tasks.append(fetch_chunk(start_row, end_row))\n\n# Fetch header separately\nasync def fetch_header():\n    result = await get_range_as_csv(sheetId=0, range=\"A1:N1\", maxRows=1)\n    return json.loads(result)\n\ntasks.append(fetch_header())\n\n# Execute ALL requests in parallel\nresults = await asyncio.gather(*tasks)\n\n# Process results - last one is the header\nheader_data = results[-1]\ncolumns = header_data[\"csv\"].strip().split(\",\")\n\nall_data = []\nfor data in results[:-1]:\n    if data[\"rowCount\"] > 0:\n        chunk_df = pd.read_csv(io.StringIO(data[\"csv\"]), header=None)\n        all_data.append(chunk_df)\n\n# Combine all chunks\ndf = pd.concat(all_data, ignore_index=True)\ndf.columns = columns\n\nprint(f\"Loaded {len(df)} rows\")  # Only print summaries!\n```\n\n### Writing data back to the spreadsheet\n\nExcel has per-request payload limits, so write in chunks of ~500 rows. Use `asyncio.gather()` to submit all chunks in parallel:\n\n```python\n# Write in parallel chunks of 500 rows\nchunk_size = 500\ntasks = []\nfor i in range(0, len(df), chunk_size):\n    chunk = df.iloc[i:i + chunk_size].values.tolist()\n    start_row = i + 2  # Row 2 onwards (after header)\n    tasks.append(set_cell_range(sheetId=0, range=f\"A{start_row}\", values=chunk))\n\nawait asyncio.gather(*tasks)  # All chunks written in parallel\n```\n\n## Using copyToRange effectively:\nThe set_cell_range tool includes a powerful copyToRange parameter that allows you to create a pattern in the first cell/row/column and then copy it to a larger range.\nThis is particularly useful for filling formulas across large datasets efficiently.\n\n### Best practices for copyToRange:\n1. **Start with the pattern**: Create your formula or data pattern in the first cell, row, or column of your range\n2. **Use absolute references wisely**: Use $ to lock rows or columns that should remain constant when copying\n   - $A$1: Both column and row are locked (doesn't change when copied)\n   - $A1: Column is locked, row changes (useful for copying across columns)\n   - A$1: Row is locked, column changes (useful for copying down rows)\n   - A1: Both change (relative reference)\n3. **Apply the pattern**: Use copyToRange to specify the destination range where the pattern should be copied\n\n### Examples:\n- **Adding a calculation column**: Set C1 to \"=A1+B1\" then use copyToRange:\"C2:C100\" to fill the entire column\n- **Multi-row financial projections**: Complete an entire row first, then copy the pattern:\n  1. Set B2:F2 with Year 1 calculations (e.g., B2=\"=$B$1*1.05\" for Revenue, C2=\"=B2*0.6\" for COGS, D2=\"=B2-C2\" for Gross Profit)\n  2. Use copyToRange:\"B3:F6\" to project Years 2-5 with the same growth pattern\n  3. The row references adjust while column relationships are preserved (B3=\"=$B$1*1.05^2\", C3=\"=B3*0.6\", D3=\"=B3-C3\")\n- **Year-over-year analysis with locked rows**: \n  1. Set B2:B13 with growth formulas referencing row 1 (e.g., B2=\"=B$1*1.1\", B3=\"=B$1*1.1^2\", etc.)\n  2. Use copyToRange:\"C2:G13\" to copy this pattern across multiple years\n  3. Each column maintains the reference to its own row 1 (C2=\"=C$1*1.1\", D2=\"=D$1*1.1\", etc.)\n\nThis approach is much more efficient than setting each cell individually and ensures consistent formula structure.\n\n## Range optimization:\nPrefer smaller, targeted ranges. Break large operations into multiple calls rather than one massive range. Only include cells with actual data. Avoid padding.\n\n## Clearing cells\nUse the clear_cell_range tool to remove content from cells efficiently:\n- **clear_cell_range**: Clears content from a specified range with granular control\n  - clearType: \"contents\" (default): Clears values/formulas but preserves formatting\n  - clearType: \"all\": Clears both content and formatting\n  - clearType: \"formats\": Clears only formatting, preserves content\n- **When to use**: When you need to empty cells completely rather than just setting empty values\n- **Range support**: Works with finite ranges (\"A1:C10\") and infinite ranges (\"2:3\" for entire rows, \"A:A\" for entire columns)\n\nExample: To clear data from cells C2:C3 while keeping formatting: clear_cell_range(sheetId=1, range=\"C2:C3\", clearType=\"contents\")\n\n## Resizing columns\nWhen resizing, focus on row label columns rather than top headers that span multiple columns—those headers will still be visible.\nFor financial models, many users prefer uniform column widths. Use additional empty columns for indentation rather than varying column widths.\n\n## Building complex models\nVERY IMPORTANT. For complex models (DCF, three-statement models, LBO), lay out a plan first and verify each section is correct before moving on. Double-check the entire model one last time before delivering to the user.\n\n## Formatting\n\n### Maintaining formatting consistency:\nWhen modifying an existing spreadsheet, prioritize preserving existing formatting.\nWhen using set_cell_ranges without any formatting parameters, existing cell formatting is automatically preserved.\nIf the cell is blank and has no existing formatting, it will remain unformatted unless you specify formatting or use formatFromCell.\nWhen adding new data to a spreadsheet and you want to apply specific formatting:\n- Use formatFromCell to copy formatting from existing cells (e.g., headers, first data row)\n- For new rows, copy formatting from the row above using formatFromCell\n- For new columns, copy formatting from an adjacent column\n- Only specify formatting when you want to change the existing format or format blank cells\nExample: When adding a new data row, use formatFromCell: \"A2\" to match the formatting of existing data rows.\nNote: If you just want to update values without changing formatting, simply omit both formatting and formatFromCell parameters.\n\n### Finance formatting for new sheets:\nWhen creating new sheets for financial models, use these formatting standards:\n\n#### Color Coding Standards for new finance sheets\n- Blue text (#0000FF): Hardcoded inputs, and numbers users will change for scenarios\n- Black text (#000000): ALL formulas and calculations\n- Green text (#008000): Links pulling from other worksheets within same workbook\n- Red text (#FF0000): External links to other files\n- Yellow background (#FFFF00): Key assumptions needing attention or cells that need to be updated\n\n#### Number Formatting Standards for new finance sheets\n- Years: Format as text strings (e.g., \"2024\" not \"2,024\")\n- Currency: Use $#,##0 format; ALWAYS specify units in headers (\"Revenue ($mm)\")\n- Zeros: Use number formatting to make all zeros “-”, including percentages (e.g., \"$#,##0;($#,##0);-”)\n- Percentages: Default to 0.0% format (one decimal)\n- Multiples: Format as 0.0x for valuation multiples (EV/EBITDA, P/E)\n- Negative numbers: Use parentheses (123) not minus -123\n\n#### Documentation Requirements for Hardcodes\n- Notes or in cells beside (if end of table). Format: \"Source: [System/Document], [Date], [Specific Reference], [URL if applicable]\"\n- Examples:\n  - \"Source: Company 10-K, FY2024, Page 45, Revenue Note, [SEC EDGAR URL]\"\n  - \"Source: Company 10-Q, Q2 2025, Exhibit 99.1, [SEC EDGAR URL]\"\n  - \"Source: Bloomberg Terminal, 8/15/2025, AAPL US Equity\"\n  - \"Source: FactSet, 8/20/2025, Consensus Estimates Screen\"\n\n#### Assumptions Placement\n- Place ALL assumptions (growth rates, margins, multiples, etc.) in separate assumption cells\n- Use cell references instead of hardcoded values in formulas\n- Example: Use =B5*(1+$B$6) instead of =B5*1.05\n- Document assumption cells with notes directly in the cell beside it.\n\n## Performing calculations:\nWhen writing data involving calculations to the spreadsheet, always use spreadsheet formulas to keep data dynamic.\nIf you need to perform mental math to assist the user with analysis, you can use Python code execution to calculate the result.\nFor example: python -c \"print(2355 * (214 / 2) * pow(12, 2))\"\nPrefer formulas to python, but python to mental math.\nOnly use formulas when writing the Sheet. Never write Python to the Sheet. Only use Python for your own calculations.\n\n## Checking your work\nWhen you use set_cell_range with formulas, the tool automatically returns computed values or errors in the formula_results field.\nCheck the formula_results to ensure there are no errors like #VALUE! or #NAME? before giving your final response to the user.\nIf you built a new financial model, verify that formatting is correct as defined above.\nVERY IMPORTANT. When inserting rows within formula ranges: After inserting rows that should be included in existing formulas (like Mean/Median calculations), verify that ALL summary formulas have expanded to include the new rows. AVERAGE and MEDIAN formulas may not auto-expand consistently - check and update the ranges manually if needed.\n\n## Creating charts\nCharts require a single contiguous data range as their source (e.g., 'Sheet1!A1:D100').\n\n### Data organization for charts\n**Standard layout**: Headers in first row (become series names), optional categories in first column (become x-axis labels).\nExample for column/bar/line charts:\n\n|        | Q1 | Q2 | Q3 | Q4 |\n| North  | 100| 120| 110| 130|\n| South  | 90 | 95 | 100| 105|\n\nSource: 'Sheet1!A1:E3'\n\n**Chart-specific requirements**:\n- Pie/Doughnut: Single column of values with labels\n- Scatter/Bubble: First column = X values, other columns = Y values\n- Stock charts: Specific column order (Open, High, Low, Close, Volume)\n\n### Using pivot tables with charts\n**Pivot tables are ALWAYS chart-ready**: If data is already a pivot table output, chart it directly without additional preparation.\n\n**For raw data needing aggregation**: Create a pivot or table first to organize the data, then chart the pivot table's output range.\n\n**Modifying pivot-backed charts**: To change data in charts sourced from pivot tables, update the pivot table itself—changes automatically propagate to the chart, requiring no additional chart mutations.\n\nExample workflow:\n1. User asks: \"Create a chart showing total sales by region\"\n2. Raw data in 'Sheet1!A1:D1000' needs aggregation by region\n3. Create pivot table at 'Sheet2!A1' aggregating sales by region → outputs to 'Sheet2!A1:C10'\n4. Create chart with source='Sheet2!A1:C10'\n\n### Date aggregation in pivot tables\nWhen users request aggregation by date periods (month, quarter, year) but the source data contains individual daily dates:\n1. Add a helper column with a formula to extract the desired period (e.g., =EOMONTH(A2,-1)+1 for first of month, =YEAR(A2)&\"-Q\"&QUARTER(A2) for quarterly); set the header separately from formula cells, and make sure the entire column is populated properly before creating the pivot table\n2. Use the helper column as the row/column field in the pivot table instead of the raw date column\n\nExample: \"Show total sales by month\" with daily dates in column A:\n1. Add column with =EOMONTH(A2,-1)+1 to get the first day of each month (e.g., 2024-01-15 → 2024-01-01)\n2. Create pivot table using the month column for rows and sales for values\n\n### Pivot table update limitations\n**IMPORTANT**: You cannot update a pivot table's source range or destination location using modify_object with operation=\"update\". The source and range properties are immutable after creation.\n\n**To change source range or location:**\n1. **Delete the existing pivot table first** using modify_object with operation=\"delete\"\n2. **Then create a new one** with the desired source/range using operation=\"create\"\n3. **Always delete before recreating** to avoid range conflicts that cause errors\n\n**You CAN update without recreation:**\n- Field configuration (rows, columns, values)\n- Field aggregation functions (sum, average, etc.)\n- Pivot table name\n\n**Example**: To expand source from \"A1:H51\" to \"A1:I51\" (adding new column):\n1. modify_object(operation=\"delete\", id=\"{existing-id}\")\n2. modify_object(operation=\"create\", properties={source:\"A1:I51\", range:\"J1\", ...})\n\n## Citing cells and ranges\nWhen referencing specific cells or ranges in your response, use markdown links with this format:\n- Single cell: [A1](citation:sheetId!A1)\n- Range: [A1:B10](citation:sheetId!A1:B10)\n- Column: [A:A](citation:sheetId!A:A)\n- Row: [5:5](citation:sheetId!5:5)\n- Entire sheet: [SheetName](citation:sheetId) - use the actual sheet name as the display text\n\nExamples:\n- \"The total in [B5](citation:123!B5) is calculated from [B1:B4](citation:123!B1:B4)\"\n- \"See the data in [Sales Data](citation:456) for details\"\n- \"Column [C:C](sheet:123!C:C) contains the formulas\"\n\nUse citations when:\n- Referring to specific data values\n- Explaining formulas and their references\n- Pointing out issues or patterns in specific cells\n- Directing user attention to particular locations\n\n## Custom Function Integrations\n\nWhen working with financial data in Microsoft Excel, you can use custom functions from major data platforms. These integrations require specific plugins/add-ins installed in Excel. Follow this approach:\n\n1. **First attempt**: Use the custom functions when the user explicitly mentions using plugins/add-ins/formulas from these platforms\n2. **Automatic fallback**: If formulas return #VALUE! error (indicating missing plugin), automatically switch to web search to retrieve the requested data instead\n3. **Seamless experience**: Don't ask permission - briefly explain the plugin wasn't available and that you're retrieving the data via web search\n\n**Important**: Only use these custom functions when users explicitly request plugin/add-in usage. For general data requests, use web search or standard Excel functions first.\n\n### Bloomberg Terminal\n**When users mention**: Use Bloomberg Excel add-in to get Apple's current stock price, Pull historical revenue data using Bloomberg formulas, Use Bloomberg Terminal plugin to fetch top 20 shareholders, Query Bloomberg with Excel functions for P/E ratios, Use Bloomberg add-in data for this analysis\n****CRITICAL USAGE LIMIT**: Maximum 5,000 rows × 40 columns per terminal per month. Exceeding this locks the terminal for ALL users until next month. Common fields: PX_LAST (price), BEST_PE_RATIO (P/E), CUR_MKT_CAP (market cap), TOT_RETURN_INDEX_GROSS_DVDS (total return).**\n\n**=BDP(security, field)**: Current/static data point retrieval\n  - =BDP(\"AAPL US Equity\", \"PX_LAST\")\n  - =BDP(\"MSFT US Equity\", \"BEST_PE_RATIO\")\n  - =BDP(\"TSLA US Equity\", \"CUR_MKT_CAP\")\n\n**=BDH(security, field, start_date, end_date)**: Historical time series data retrieval\n  - =BDH(\"AAPL US Equity\", \"PX_LAST\", \"1/1/2020\", \"12/31/2020\")\n  - =BDH(\"SPX Index\", \"PX_LAST\", \"1/1/2023\", \"12/31/2023\")\n  - =BDH(\"MSFT US Equity\", \"TOT_RETURN_INDEX_GROSS_DVDS\", \"1/1/2022\", \"12/31/2022\")\n\n**=BDS(security, field)**: Bulk data sets that return arrays\n  - =BDS(\"AAPL US Equity\", \"TOP_20_HOLDERS_PUBLIC_FILINGS\")\n  - =BDS(\"SPY US Equity\", \"FUND_HOLDING_ALL\")\n  - =BDS(\"MSFT US Equity\", \"BEST_ANALYST_RECS_BULK\")\n\n### FactSet\n**When users mention**: Use FactSet Excel plugin to get current price, Pull FactSet fundamental data with Excel functions, Use FactSet add-in for historical analysis, Fetch consensus estimates using FactSet formulas, Query FactSet with Excel add-in functions\n**Maximum 25 securities per search. Functions are case-sensitive. Common fields: P_PRICE (price), FF_SALES (sales), P_PE (P/E ratio), P_TOTAL_RETURNC (total return), P_VOLUME (volume), FE_ESTIMATE (estimates), FG_GICS_SECTOR (sector).**\n\n**=FDS(security, field)**: Current data point retrieval\n  - =FDS(\"AAPL-US\", \"P_PRICE\")\n  - =FDS(\"MSFT-US\", \"FF_SALES(0FY)\")\n  - =FDS(\"TSLA-US\", \"P_PE\")\n\n**=FDSH(security, field, start_date, end_date)**: Historical time series data retrieval\n  - =FDSH(\"AAPL-US\", \"P_PRICE\", \"20200101\", \"20201231\")\n  - =FDSH(\"SPY-US\", \"P_TOTAL_RETURNC\", \"20220101\", \"20221231\")\n  - =FDSH(\"MSFT-US\", \"P_VOLUME\", \"20230101\", \"20231231\")\n\n### S&P Capital IQ\n**When users mention**: Use Capital IQ Excel plugin to get data, Pull CapIQ fundamental data with add-in functions, Use S&P Capital IQ Excel add-in for analysis, Fetch estimates using CapIQ Excel formulas, Query Capital IQ with Excel plugin functions\n**Common fields - Balance Sheet: IQ_CASH_EQUIV, IQ_TOTAL_RECEIV, IQ_INVENTORY, IQ_TOTAL_CA, IQ_NPPE, IQ_TOTAL_ASSETS, IQ_AP, IQ_ST_DEBT, IQ_TOTAL_CL, IQ_LT_DEBT, IQ_TOTAL_EQUITY | Income: IQ_TOTAL_REV, IQ_COGS, IQ_GP, IQ_SGA_SUPPL, IQ_OPER_INC, IQ_NI, IQ_BASIC_EPS_INCL, IQ_EBITDA | Cash Flow: IQ_CASH_OPER, IQ_CAPEX, IQ_CASH_INVEST, IQ_CASH_FINAN.**\n\n**=CIQ(security, field)**: Current market data and fundamentals\n  - =CIQ(\"NYSE:AAPL\", \"IQ_CLOSEPRICE\")\n  - =CIQ(\"NYSE:MSFT\", \"IQ_TOTAL_REV\", \"IQ_FY\")\n  - =CIQ(\"NASDAQ:TSLA\", \"IQ_MARKET_CAP\")\n\n**=CIQH(security, field, start_date, end_date)**: Historical time series data\n  - =CIQH(\"NYSE:AAPL\", \"IQ_CLOSEPRICE\", \"01/01/2020\", \"12/31/2020\")\n  - =CIQH(\"NYSE:SPY\", \"IQ_TOTAL_RETURN\", \"01/01/2023\", \"12/31/2023\")\n  - =CIQH(\"NYSE:MSFT\", \"IQ_VOLUME\", \"01/01/2022\", \"12/31/2022\")\n\n### Refinitiv (Eikon/LSEG Workspace)\n**When users mention**: Use Refinitiv Excel add-in to get data, Pull Eikon data with Excel plugin, Use LSEG Workspace Excel functions, Use TR function in Excel, Query Refinitiv with Excel add-in formulas\n**Access via TR function with Formula Builder. Common fields: TR.CLOSEPRICE (close price), TR.VOLUME (volume), TR.CompanySharesOutstanding (shares outstanding), TR.TRESGScore (ESG score), TR.EnvironmentPillarScore (environmental score), TR.TURNOVER (turnover). Use SDate/EDate for date ranges, Frq=D for daily data, CH=Fd for column headers.**\n\n**=TR(RIC, field)**: Real-time and reference data retrieval\n  - =TR(\"AAPL.O\", \"TR.CLOSEPRICE\")\n  - =TR(\"MSFT.O\", \"TR.VOLUME\")\n  - =TR(\"TSLA.O\", \"TR.CompanySharesOutstanding\")\n\n**=TR(RIC, field, parameters)**: Historical time series with date parameters\n  - =TR(\"AAPL.O\", \"TR.CLOSEPRICE\", \"SDate=2023-01-01 EDate=2023-12-31 Frq=D\")\n  - =TR(\"SPY\", \"TR.CLOSEPRICE\", \"SDate=2022-01-01 EDate=2022-12-31 Frq=D CH=Fd\")\n  - =TR(\"MSFT.O\", \"TR.VOLUME\", \"Period=FY0 Frq=FY SDate=0 EDate=-5\")\n\n**=TR(instruments, fields, parameters, destination)**: Multi-instrument/field data with output control\n  - =TR(\"AAPL.O;MSFT.O\", \"TR.CLOSEPRICE;TR.VOLUME\", \"CH=Fd RH=IN\", A1)\n  - =TR(\"TSLA.O\", \"TR.TRESGScore\", \"Period=FY0 SDate=2020-01-01 EDate=2023-12-31 TRANSPOSE=Y\", B1)\n  - =TR(\"SPY\", \"TR.CLOSEPRICE\", \"SDate=2023-01-01 EDate=2023-12-31 Frq=D SORT=A\", C1)",
-      "cache_control": {
-        "type": "ephemeral"
-      }
+      "cache_control": { "type": "ephemeral" }
     }
   ],
   "messages": [
@@ -86,55 +84,29 @@
             "range": "A1:C4",
             "cells": [
               [
-                {
-                  "value": "Name"
-                },
-                {
-                  "value": "Value"
-                },
-                {
-                  "value": "Timestamp"
-                }
+                { "value": "Name" },
+                { "value": "Value" },
+                { "value": "Timestamp" }
               ],
               [
-                {
-                  "value": "Test A"
-                },
-                {
-                  "value": 100
-                },
-                {
-                  "value": "2025-02-02 10:00"
-                }
+                { "value": "Test A" },
+                { "value": 100 },
+                { "value": "2025-02-02 10:00" }
               ],
               [
-                {
-                  "value": "Test B"
-                },
-                {
-                  "value": 200
-                },
-                {
-                  "value": "2025-02-02 10:01"
-                }
+                { "value": "Test B" },
+                { "value": 200 },
+                { "value": "2025-02-02 10:01" }
               ],
               [
-                {
-                  "value": "Test C"
-                },
-                {
-                  "value": 300
-                },
-                {
-                  "value": "2025-02-02 10:02"
-                }
+                { "value": "Test C" },
+                { "value": 300 },
+                { "value": "2025-02-02 10:02" }
               ]
             ],
             "explanation": "Write test data to sheet"
           },
-          "caller": {
-            "type": "direct"
-          }
+          "caller": { "type": "direct" }
         }
       ]
     },
@@ -162,9 +134,7 @@
           "input": {
             "code": "\nimport asyncio\nimport json\n\nasync def main():\n    # Test 1: Read as CSV (the simpler format)\n    print(\"=\" * 50)\n    print(\"TEST 1: get_range_as_csv\")\n    print(\"=\" * 50)\n    \n    csv_result = await get_range_as_csv({\n        \"sheetId\": 1,\n        \"range\": \"A1:C4\",\n        \"explanation\": \"Read test data as CSV\"\n    })\n    \n    print(f\"Raw return type: {type(csv_result)}\")\n    print(f\"Raw return value:\\n{csv_result}\\n\")\n    \n    # Parse it\n    parsed = json.loads(csv_result)\n    print(f\"Parsed keys: {parsed.keys()}\")\n    print(f\"CSV content:\\n{parsed.get('csv', 'N/A')}\")\n    print(f\"Row count: {parsed.get('rowCount', 'N/A')}\")\n    \n    print(\"\\n\" + \"=\" * 50)\n    print(\"TEST 2: get_cell_ranges (more detailed)\")\n    print(\"=\" * 50)\n    \n    # Test 2: Read with full cell details\n    detail_result = await get_cell_ranges({\n        \"sheetId\": 1,\n        \"ranges\": [\"A1:C4\"],\n        \"includeStyles\": False,\n        \"explanation\": \"Read test data with details\"\n    })\n    \n    print(f\"Raw return type: {type(detail_result)}\")\n    parsed_detail = json.loads(detail_result)\n    print(f\"Parsed structure: {json.dumps(parsed_detail, indent=2)[:1500]}...\")\n\nasyncio.run(main())\n"
           },
-          "caller": {
-            "type": "direct"
-          }
+          "caller": { "type": "direct" }
         },
         {
           "type": "tool_use",
@@ -269,19 +239,13 @@
           "input": {
             "code": "\nimport asyncio\nimport json\nimport time\n\nasync def main():\n    print(\"Testing call behavior...\\n\")\n    \n    # Test: Are gather() calls truly parallel or batched?\n    start = time.time()\n    \n    async def timed_call(label, range_str):\n        t0 = time.time()\n        result = await get_range_as_csv({\n            \"sheetId\": 1, \n            \"range\": range_str,\n            \"explanation\": f\"Test {label}\"\n        })\n        t1 = time.time()\n        return {\n            \"label\": label,\n            \"start\": round(t0 - start, 3),\n            \"end\": round(t1 - start, 3),\n            \"duration\": round(t1 - t0, 3)\n        }\n    \n    # Fire off 3 \"parallel\" calls\n    results = await asyncio.gather(\n        timed_call(\"A\", \"A1:A4\"),\n        timed_call(\"B\", \"B1:B4\"),\n        timed_call(\"C\", \"C1:C4\"),\n    )\n    \n    total_time = time.time() - start\n    \n    print(\"Call timing results:\")\n    print(\"-\" * 40)\n    for r in results:\n        print(f\"  {r['label']}: started={r['start']}s, ended={r['end']}s, duration={r['duration']}s\")\n    \n    print(f\"\\nTotal wall time: {round(total_time, 3)}s\")\n    \n    if results[0]['end'] == results[1]['end'] == results[2]['end']:\n        print(\"\\n→ All calls ended at SAME time = likely BATCHED\")\n    elif results[0]['duration'] + results[1]['duration'] + results[2]['duration'] > total_time * 1.5:\n        print(\"\\n→ Sum of durations > total time = truly PARALLEL\")\n    else:\n        print(\"\\n→ Calls appear to be SEQUENTIAL\")\n\nasyncio.run(main())\n"
           },
-          "caller": {
-            "type": "direct"
-          }
+          "caller": { "type": "direct" }
         },
         {
           "type": "tool_use",
           "id": "toolu_014BXSTaitJUwcWRhyHsfLZo",
           "name": "get_range_as_csv",
-          "input": {
-            "sheetId": 1,
-            "range": "C1:C4",
-            "explanation": "Test C"
-          },
+          "input": { "sheetId": 1, "range": "C1:C4", "explanation": "Test C" },
           "caller": {
             "type": "code_execution_20250825",
             "tool_id": "srvtoolu_01EzbwQxRNhY9GWgpBEjoV71"
@@ -291,11 +255,7 @@
           "type": "tool_use",
           "id": "toolu_014qQK1DQTqrUhNYwH9t3oSA",
           "name": "get_range_as_csv",
-          "input": {
-            "sheetId": 1,
-            "range": "B1:B4",
-            "explanation": "Test B"
-          },
+          "input": { "sheetId": 1, "range": "B1:B4", "explanation": "Test B" },
           "caller": {
             "type": "code_execution_20250825",
             "tool_id": "srvtoolu_01EzbwQxRNhY9GWgpBEjoV71"
@@ -305,11 +265,7 @@
           "type": "tool_use",
           "id": "toolu_01GK5Uf2yXQrHBeLjcCUo5yV",
           "name": "get_range_as_csv",
-          "input": {
-            "sheetId": 1,
-            "range": "A1:A4",
-            "explanation": "Test A"
-          },
+          "input": { "sheetId": 1, "range": "A1:A4", "explanation": "Test A" },
           "caller": {
             "type": "code_execution_20250825",
             "tool_id": "srvtoolu_01EzbwQxRNhY9GWgpBEjoV71"
@@ -375,10 +331,7 @@
       "content": [
         {
           "type": "text",
-          "text": "That's a really interesting detail! So the architecture is even cleaner than I thought:\n\n## Actual Architecture\n\n```\n┌─────────────────────────────────────────────────────────────────┐\n│                                                                 │\n│  Cloud                              │  Your Machine             │\n│                                     │                           │\n│  ┌──────────────┐                   │                           │\n│  │ Claude       │ ──── SSE stream ──┼──► Excel Add-in           │\n│  │ (generates   │                   │       │                   │\n│  │  response)   │                   │       ▼                   │\n│  └──────────────┘                   │    Executes tool calls    │\n│        │                            │    against spreadsheet    │\n│        ▼                            │       │                   │\n│  ┌──────────────┐                   │       │                   │\n│  │ Python       │                   │       │                   │\n│  │ Container    │ ◄─────────────────┼───────┘                   │\n│  │ (runs code)  │   results fed back│                           │\n│  └──────────────┘                   │                           │\n│                                     │                           │\n└─────────────────────────────────────────────────────────────────┘\n```\n\n## The Clever Bit\n\nThe `await get_range_as_csv(...)` calls in Python aren't *actually* making network requests from the container. They're:\n\n1. **Yielding control** and signaling \"I need this data\"\n2. **Getting serialized as regular tool calls** in the SSE stream\n3. **Your add-in intercepts them**, runs them locally, sends results back\n4. **Results get injected** back into the Python runtime\n\nSo from your add-in's perspective, there's **no difference** between me calling:\n\n```python\n# This (from Python)\nawait get_range_as_csv({\"sheetId\": 1, \"range\": \"A1:C4\"})\n```\n\nand me calling the tool directly (not from Python). They both just show up as tool calls in the SSE stream!\n\nThe Python container is essentially a **suspended coroutine** waiting for tool results to be fed back in. The `async/await` isn't doing real I/O — it's a coordination mechanism with the orchestration layer.\n\nThat's a really elegant design actually. The Python code *thinks* it's making async calls, but really it's just generating tool invocations that flow through the same SSE channel as everything else.",
-          "cache_control": {
-            "type": "ephemeral"
-          }
+          "text": "That's a really interesting detail! So the architecture is even cleaner than I thought:\n\n## Actual Architecture\n\n```\n┌─────────────────────────────────────────────────────────────────┐\n│                                                                 │\n│  Cloud                              │  Your Machine             │\n│                                     │                           │\n│  ┌──────────────┐                   │                           │\n│  │ Claude       │ ──── SSE stream ──┼──► Excel Add-in           │\n│  │ (generates   │                   │       │                   │\n│  │  response)   │                   │       ▼                   │\n│  └──────────────┘                   │    Executes tool calls    │\n│        │                            │    against spreadsheet    │\n│        ▼                            │       │                   │\n│  ┌──────────────┐                   │       │                   │\n│  │ Python       │                   │       │                   │\n│  │ Container    │ ◄─────────────────┼───────┘                   │\n│  │ (runs code)  │   results fed back│                           │\n│  └──────────────┘                   │                           │\n│                                     │                           │\n└─────────────────────────────────────────────────────────────────┘\n```\n\n## The Clever Bit\n\nThe `await get_range_as_csv(...)` calls in Python aren't *actually* making network requests from the container. They're:\n\n1. **Yielding control** and signaling \"I need this data\"\n2. **Getting serialized as regular tool calls** in the SSE stream\n3. **Your add-in intercepts them**, runs them locally, sends results back\n4. **Results get injected** back into the Python runtime\n\nSo from your add-in's perspective, there's **no difference** between me calling:\n\n```python\n# This (from Python)\nawait get_range_as_csv({\"sheetId\": 1, \"range\": \"A1:C4\"})\n```\n\nand me calling the tool directly (not from Python). They both just show up as tool calls in the SSE stream!\n\nThe Python container is essentially a **suspended coroutine** waiting for tool results to be fed back in. The `async/await` isn't doing real I/O — it's a coordination mechanism with the orchestration layer.\n\nThat's a really elegant design actually. The Python code *thinks* it's making async calls, but really it's just generating tool invocations that flow through the same SSE channel as everything else."
         }
       ]
     },
@@ -392,6 +345,2782 @@
         {
           "type": "text",
           "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Ah, good point! Let me test that — if I write a large dataframe, does the entire serialized payload go through the SSE stream to your add-in?"
+        },
+        {
+          "type": "server_tool_use",
+          "id": "srvtoolu_01JeY574bG3HjA3RF2cnZ1YG",
+          "name": "code_execution",
+          "input": {
+            "code": "\nimport asyncio\nimport json\nimport pandas as pd\nimport numpy as np\n\nasync def main():\n    # Create a moderately large dataframe\n    rows = 100\n    cols = 10\n    \n    df = pd.DataFrame(\n        np.random.randint(1, 1000, size=(rows, cols)),\n        columns=[f\"Col_{i}\" for i in range(cols)]\n    )\n    \n    # Convert to the cells format required by set_cell_range\n    # Header row\n    header = [{\"value\": c} for c in df.columns]\n    \n    # Data rows\n    data_rows = []\n    for _, row in df.iterrows():\n        data_rows.append([{\"value\": int(v)} for v in row])\n    \n    all_cells = [header] + data_rows\n    \n    # Calculate payload size\n    payload = {\n        \"sheetId\": 1,\n        \"range\": f\"A1:J{rows + 1}\",\n        \"cells\": all_cells,\n        \"explanation\": \"Write large test data\"\n    }\n    \n    serialized = json.dumps(payload)\n    print(f\"DataFrame shape: {df.shape}\")\n    print(f\"Total cells: {rows * cols + cols} (including header)\")\n    print(f\"Serialized payload size: {len(serialized):,} bytes ({len(serialized)/1024:.1f} KB)\")\n    print(f\"\\nFirst 500 chars of payload:\\n{serialized[:500]}...\")\n    \n    # Actually send it\n    print(f\"\\n--- Sending to spreadsheet ---\")\n    result = await set_cell_range(payload)\n    print(f\"Result: {result}\")\n\nasyncio.run(main())\n"
+          },
+          "caller": { "type": "direct" }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_01UsEUdJojKKe8vSHzsuYWut",
+          "name": "set_cell_range",
+          "input": {
+            "sheetId": 1,
+            "range": "A1:J101",
+            "cells": [
+              [
+                { "value": "Col_0" },
+                { "value": "Col_1" },
+                { "value": "Col_2" },
+                { "value": "Col_3" },
+                { "value": "Col_4" },
+                { "value": "Col_5" },
+                { "value": "Col_6" },
+                { "value": "Col_7" },
+                { "value": "Col_8" },
+                { "value": "Col_9" }
+              ],
+              [
+                { "value": 532 },
+                { "value": 489 },
+                { "value": 904 },
+                { "value": 799 },
+                { "value": 105 },
+                { "value": 371 },
+                { "value": 862 },
+                { "value": 182 },
+                { "value": 960 },
+                { "value": 737 }
+              ],
+              [
+                { "value": 57 },
+                { "value": 885 },
+                { "value": 239 },
+                { "value": 480 },
+                { "value": 760 },
+                { "value": 725 },
+                { "value": 922 },
+                { "value": 542 },
+                { "value": 117 },
+                { "value": 885 }
+              ],
+              [
+                { "value": 496 },
+                { "value": 553 },
+                { "value": 654 },
+                { "value": 431 },
+                { "value": 661 },
+                { "value": 462 },
+                { "value": 969 },
+                { "value": 841 },
+                { "value": 929 },
+                { "value": 116 }
+              ],
+              [
+                { "value": 137 },
+                { "value": 578 },
+                { "value": 15 },
+                { "value": 854 },
+                { "value": 722 },
+                { "value": 348 },
+                { "value": 7 },
+                { "value": 549 },
+                { "value": 489 },
+                { "value": 106 }
+              ],
+              [
+                { "value": 81 },
+                { "value": 267 },
+                { "value": 605 },
+                { "value": 65 },
+                { "value": 87 },
+                { "value": 244 },
+                { "value": 810 },
+                { "value": 714 },
+                { "value": 932 },
+                { "value": 904 }
+              ],
+              [
+                { "value": 238 },
+                { "value": 502 },
+                { "value": 150 },
+                { "value": 563 },
+                { "value": 319 },
+                { "value": 777 },
+                { "value": 403 },
+                { "value": 473 },
+                { "value": 337 },
+                { "value": 417 }
+              ],
+              [
+                { "value": 99 },
+                { "value": 131 },
+                { "value": 992 },
+                { "value": 938 },
+                { "value": 836 },
+                { "value": 57 },
+                { "value": 306 },
+                { "value": 857 },
+                { "value": 55 },
+                { "value": 695 }
+              ],
+              [
+                { "value": 950 },
+                { "value": 73 },
+                { "value": 564 },
+                { "value": 45 },
+                { "value": 200 },
+                { "value": 704 },
+                { "value": 198 },
+                { "value": 486 },
+                { "value": 948 },
+                { "value": 442 }
+              ],
+              [
+                { "value": 395 },
+                { "value": 786 },
+                { "value": 489 },
+                { "value": 932 },
+                { "value": 317 },
+                { "value": 237 },
+                { "value": 156 },
+                { "value": 278 },
+                { "value": 581 },
+                { "value": 815 }
+              ],
+              [
+                { "value": 260 },
+                { "value": 645 },
+                { "value": 943 },
+                { "value": 262 },
+                { "value": 513 },
+                { "value": 296 },
+                { "value": 198 },
+                { "value": 345 },
+                { "value": 85 },
+                { "value": 263 }
+              ],
+              [
+                { "value": 756 },
+                { "value": 841 },
+                { "value": 410 },
+                { "value": 703 },
+                { "value": 210 },
+                { "value": 757 },
+                { "value": 765 },
+                { "value": 581 },
+                { "value": 656 },
+                { "value": 943 }
+              ],
+              [
+                { "value": 549 },
+                { "value": 217 },
+                { "value": 596 },
+                { "value": 57 },
+                { "value": 91 },
+                { "value": 428 },
+                { "value": 902 },
+                { "value": 19 },
+                { "value": 695 },
+                { "value": 14 }
+              ],
+              [
+                { "value": 234 },
+                { "value": 596 },
+                { "value": 269 },
+                { "value": 317 },
+                { "value": 677 },
+                { "value": 852 },
+                { "value": 377 },
+                { "value": 812 },
+                { "value": 104 },
+                { "value": 286 }
+              ],
+              [
+                { "value": 156 },
+                { "value": 494 },
+                { "value": 269 },
+                { "value": 73 },
+                { "value": 707 },
+                { "value": 400 },
+                { "value": 544 },
+                { "value": 232 },
+                { "value": 908 },
+                { "value": 884 }
+              ],
+              [
+                { "value": 710 },
+                { "value": 87 },
+                { "value": 839 },
+                { "value": 422 },
+                { "value": 431 },
+                { "value": 806 },
+                { "value": 7 },
+                { "value": 303 },
+                { "value": 27 },
+                { "value": 898 }
+              ],
+              [
+                { "value": 308 },
+                { "value": 815 },
+                { "value": 565 },
+                { "value": 804 },
+                { "value": 399 },
+                { "value": 429 },
+                { "value": 141 },
+                { "value": 525 },
+                { "value": 410 },
+                { "value": 424 }
+              ],
+              [
+                { "value": 559 },
+                { "value": 808 },
+                { "value": 583 },
+                { "value": 80 },
+                { "value": 286 },
+                { "value": 500 },
+                { "value": 648 },
+                { "value": 520 },
+                { "value": 562 },
+                { "value": 740 }
+              ],
+              [
+                { "value": 74 },
+                { "value": 500 },
+                { "value": 816 },
+                { "value": 421 },
+                { "value": 930 },
+                { "value": 545 },
+                { "value": 299 },
+                { "value": 148 },
+                { "value": 534 },
+                { "value": 716 }
+              ],
+              [
+                { "value": 694 },
+                { "value": 124 },
+                { "value": 941 },
+                { "value": 794 },
+                { "value": 579 },
+                { "value": 478 },
+                { "value": 282 },
+                { "value": 666 },
+                { "value": 98 },
+                { "value": 959 }
+              ],
+              [
+                { "value": 324 },
+                { "value": 392 },
+                { "value": 431 },
+                { "value": 734 },
+                { "value": 995 },
+                { "value": 94 },
+                { "value": 723 },
+                { "value": 23 },
+                { "value": 584 },
+                { "value": 364 }
+              ],
+              [
+                { "value": 172 },
+                { "value": 973 },
+                { "value": 985 },
+                { "value": 280 },
+                { "value": 621 },
+                { "value": 507 },
+                { "value": 510 },
+                { "value": 28 },
+                { "value": 553 },
+                { "value": 678 }
+              ],
+              [
+                { "value": 406 },
+                { "value": 971 },
+                { "value": 153 },
+                { "value": 234 },
+                { "value": 517 },
+                { "value": 800 },
+                { "value": 302 },
+                { "value": 205 },
+                { "value": 997 },
+                { "value": 87 }
+              ],
+              [
+                { "value": 241 },
+                { "value": 194 },
+                { "value": 359 },
+                { "value": 24 },
+                { "value": 361 },
+                { "value": 624 },
+                { "value": 426 },
+                { "value": 102 },
+                { "value": 607 },
+                { "value": 73 }
+              ],
+              [
+                { "value": 454 },
+                { "value": 217 },
+                { "value": 33 },
+                { "value": 789 },
+                { "value": 162 },
+                { "value": 949 },
+                { "value": 715 },
+                { "value": 79 },
+                { "value": 127 },
+                { "value": 640 }
+              ],
+              [
+                { "value": 435 },
+                { "value": 577 },
+                { "value": 560 },
+                { "value": 829 },
+                { "value": 633 },
+                { "value": 377 },
+                { "value": 355 },
+                { "value": 615 },
+                { "value": 829 },
+                { "value": 241 }
+              ],
+              [
+                { "value": 445 },
+                { "value": 263 },
+                { "value": 951 },
+                { "value": 395 },
+                { "value": 550 },
+                { "value": 161 },
+                { "value": 908 },
+                { "value": 891 },
+                { "value": 672 },
+                { "value": 342 }
+              ],
+              [
+                { "value": 811 },
+                { "value": 792 },
+                { "value": 638 },
+                { "value": 366 },
+                { "value": 107 },
+                { "value": 870 },
+                { "value": 871 },
+                { "value": 632 },
+                { "value": 529 },
+                { "value": 293 }
+              ],
+              [
+                { "value": 732 },
+                { "value": 69 },
+                { "value": 303 },
+                { "value": 279 },
+                { "value": 189 },
+                { "value": 837 },
+                { "value": 349 },
+                { "value": 364 },
+                { "value": 1 },
+                { "value": 70 }
+              ],
+              [
+                { "value": 184 },
+                { "value": 712 },
+                { "value": 766 },
+                { "value": 804 },
+                { "value": 407 },
+                { "value": 207 },
+                { "value": 479 },
+                { "value": 463 },
+                { "value": 371 },
+                { "value": 231 }
+              ],
+              [
+                { "value": 878 },
+                { "value": 736 },
+                { "value": 658 },
+                { "value": 995 },
+                { "value": 450 },
+                { "value": 150 },
+                { "value": 902 },
+                { "value": 797 },
+                { "value": 244 },
+                { "value": 967 }
+              ],
+              [
+                { "value": 724 },
+                { "value": 423 },
+                { "value": 716 },
+                { "value": 660 },
+                { "value": 2 },
+                { "value": 674 },
+                { "value": 185 },
+                { "value": 736 },
+                { "value": 156 },
+                { "value": 798 }
+              ],
+              [
+                { "value": 451 },
+                { "value": 771 },
+                { "value": 71 },
+                { "value": 961 },
+                { "value": 626 },
+                { "value": 685 },
+                { "value": 582 },
+                { "value": 339 },
+                { "value": 22 },
+                { "value": 526 }
+              ],
+              [
+                { "value": 293 },
+                { "value": 163 },
+                { "value": 945 },
+                { "value": 31 },
+                { "value": 29 },
+                { "value": 660 },
+                { "value": 969 },
+                { "value": 34 },
+                { "value": 465 },
+                { "value": 588 }
+              ],
+              [
+                { "value": 233 },
+                { "value": 977 },
+                { "value": 223 },
+                { "value": 347 },
+                { "value": 110 },
+                { "value": 933 },
+                { "value": 587 },
+                { "value": 170 },
+                { "value": 847 },
+                { "value": 137 }
+              ],
+              [
+                { "value": 32 },
+                { "value": 253 },
+                { "value": 976 },
+                { "value": 616 },
+                { "value": 871 },
+                { "value": 391 },
+                { "value": 37 },
+                { "value": 627 },
+                { "value": 642 },
+                { "value": 77 }
+              ],
+              [
+                { "value": 977 },
+                { "value": 68 },
+                { "value": 939 },
+                { "value": 817 },
+                { "value": 751 },
+                { "value": 193 },
+                { "value": 591 },
+                { "value": 808 },
+                { "value": 7 },
+                { "value": 455 }
+              ],
+              [
+                { "value": 869 },
+                { "value": 971 },
+                { "value": 358 },
+                { "value": 189 },
+                { "value": 688 },
+                { "value": 791 },
+                { "value": 905 },
+                { "value": 174 },
+                { "value": 73 },
+                { "value": 41 }
+              ],
+              [
+                { "value": 703 },
+                { "value": 198 },
+                { "value": 10 },
+                { "value": 145 },
+                { "value": 915 },
+                { "value": 160 },
+                { "value": 204 },
+                { "value": 722 },
+                { "value": 716 },
+                { "value": 478 }
+              ],
+              [
+                { "value": 868 },
+                { "value": 403 },
+                { "value": 463 },
+                { "value": 612 },
+                { "value": 826 },
+                { "value": 314 },
+                { "value": 460 },
+                { "value": 423 },
+                { "value": 951 },
+                { "value": 539 }
+              ],
+              [
+                { "value": 537 },
+                { "value": 363 },
+                { "value": 164 },
+                { "value": 356 },
+                { "value": 10 },
+                { "value": 832 },
+                { "value": 370 },
+                { "value": 163 },
+                { "value": 634 },
+                { "value": 934 }
+              ],
+              [
+                { "value": 704 },
+                { "value": 859 },
+                { "value": 359 },
+                { "value": 384 },
+                { "value": 341 },
+                { "value": 691 },
+                { "value": 460 },
+                { "value": 288 },
+                { "value": 436 },
+                { "value": 807 }
+              ],
+              [
+                { "value": 437 },
+                { "value": 964 },
+                { "value": 386 },
+                { "value": 349 },
+                { "value": 115 },
+                { "value": 672 },
+                { "value": 745 },
+                { "value": 184 },
+                { "value": 868 },
+                { "value": 444 }
+              ],
+              [
+                { "value": 373 },
+                { "value": 816 },
+                { "value": 27 },
+                { "value": 915 },
+                { "value": 466 },
+                { "value": 383 },
+                { "value": 69 },
+                { "value": 46 },
+                { "value": 272 },
+                { "value": 199 }
+              ],
+              [
+                { "value": 983 },
+                { "value": 1 },
+                { "value": 108 },
+                { "value": 685 },
+                { "value": 328 },
+                { "value": 775 },
+                { "value": 681 },
+                { "value": 511 },
+                { "value": 634 },
+                { "value": 739 }
+              ],
+              [
+                { "value": 472 },
+                { "value": 141 },
+                { "value": 127 },
+                { "value": 571 },
+                { "value": 918 },
+                { "value": 783 },
+                { "value": 424 },
+                { "value": 990 },
+                { "value": 975 },
+                { "value": 929 }
+              ],
+              [
+                { "value": 711 },
+                { "value": 184 },
+                { "value": 955 },
+                { "value": 948 },
+                { "value": 295 },
+                { "value": 461 },
+                { "value": 797 },
+                { "value": 604 },
+                { "value": 292 },
+                { "value": 442 }
+              ],
+              [
+                { "value": 526 },
+                { "value": 54 },
+                { "value": 641 },
+                { "value": 533 },
+                { "value": 770 },
+                { "value": 480 },
+                { "value": 844 },
+                { "value": 264 },
+                { "value": 94 },
+                { "value": 571 }
+              ],
+              [
+                { "value": 196 },
+                { "value": 718 },
+                { "value": 892 },
+                { "value": 331 },
+                { "value": 355 },
+                { "value": 824 },
+                { "value": 132 },
+                { "value": 972 },
+                { "value": 882 },
+                { "value": 156 }
+              ],
+              [
+                { "value": 669 },
+                { "value": 438 },
+                { "value": 670 },
+                { "value": 293 },
+                { "value": 624 },
+                { "value": 838 },
+                { "value": 789 },
+                { "value": 731 },
+                { "value": 436 },
+                { "value": 475 }
+              ],
+              [
+                { "value": 857 },
+                { "value": 975 },
+                { "value": 446 },
+                { "value": 786 },
+                { "value": 774 },
+                { "value": 937 },
+                { "value": 36 },
+                { "value": 989 },
+                { "value": 25 },
+                { "value": 552 }
+              ],
+              [
+                { "value": 764 },
+                { "value": 38 },
+                { "value": 575 },
+                { "value": 610 },
+                { "value": 424 },
+                { "value": 58 },
+                { "value": 803 },
+                { "value": 22 },
+                { "value": 781 },
+                { "value": 746 }
+              ],
+              [
+                { "value": 703 },
+                { "value": 407 },
+                { "value": 34 },
+                { "value": 181 },
+                { "value": 259 },
+                { "value": 312 },
+                { "value": 489 },
+                { "value": 896 },
+                { "value": 207 },
+                { "value": 255 }
+              ],
+              [
+                { "value": 756 },
+                { "value": 624 },
+                { "value": 147 },
+                { "value": 228 },
+                { "value": 461 },
+                { "value": 591 },
+                { "value": 612 },
+                { "value": 797 },
+                { "value": 500 },
+                { "value": 218 }
+              ],
+              [
+                { "value": 194 },
+                { "value": 492 },
+                { "value": 559 },
+                { "value": 463 },
+                { "value": 508 },
+                { "value": 624 },
+                { "value": 378 },
+                { "value": 459 },
+                { "value": 228 },
+                { "value": 990 }
+              ],
+              [
+                { "value": 514 },
+                { "value": 789 },
+                { "value": 997 },
+                { "value": 781 },
+                { "value": 922 },
+                { "value": 645 },
+                { "value": 989 },
+                { "value": 229 },
+                { "value": 186 },
+                { "value": 46 }
+              ],
+              [
+                { "value": 672 },
+                { "value": 421 },
+                { "value": 932 },
+                { "value": 724 },
+                { "value": 261 },
+                { "value": 331 },
+                { "value": 459 },
+                { "value": 851 },
+                { "value": 348 },
+                { "value": 106 }
+              ],
+              [
+                { "value": 598 },
+                { "value": 799 },
+                { "value": 326 },
+                { "value": 549 },
+                { "value": 151 },
+                { "value": 82 },
+                { "value": 442 },
+                { "value": 811 },
+                { "value": 310 },
+                { "value": 572 }
+              ],
+              [
+                { "value": 233 },
+                { "value": 937 },
+                { "value": 416 },
+                { "value": 692 },
+                { "value": 201 },
+                { "value": 113 },
+                { "value": 565 },
+                { "value": 170 },
+                { "value": 600 },
+                { "value": 80 }
+              ],
+              [
+                { "value": 363 },
+                { "value": 682 },
+                { "value": 752 },
+                { "value": 755 },
+                { "value": 647 },
+                { "value": 440 },
+                { "value": 603 },
+                { "value": 379 },
+                { "value": 427 },
+                { "value": 356 }
+              ],
+              [
+                { "value": 986 },
+                { "value": 134 },
+                { "value": 886 },
+                { "value": 905 },
+                { "value": 370 },
+                { "value": 503 },
+                { "value": 175 },
+                { "value": 669 },
+                { "value": 710 },
+                { "value": 774 }
+              ],
+              [
+                { "value": 164 },
+                { "value": 597 },
+                { "value": 893 },
+                { "value": 60 },
+                { "value": 695 },
+                { "value": 313 },
+                { "value": 769 },
+                { "value": 716 },
+                { "value": 104 },
+                { "value": 605 }
+              ],
+              [
+                { "value": 884 },
+                { "value": 803 },
+                { "value": 387 },
+                { "value": 117 },
+                { "value": 185 },
+                { "value": 725 },
+                { "value": 137 },
+                { "value": 485 },
+                { "value": 82 },
+                { "value": 297 }
+              ],
+              [
+                { "value": 811 },
+                { "value": 144 },
+                { "value": 29 },
+                { "value": 33 },
+                { "value": 553 },
+                { "value": 752 },
+                { "value": 313 },
+                { "value": 801 },
+                { "value": 729 },
+                { "value": 373 }
+              ],
+              [
+                { "value": 103 },
+                { "value": 527 },
+                { "value": 106 },
+                { "value": 180 },
+                { "value": 758 },
+                { "value": 818 },
+                { "value": 455 },
+                { "value": 697 },
+                { "value": 437 },
+                { "value": 320 }
+              ],
+              [
+                { "value": 287 },
+                { "value": 191 },
+                { "value": 246 },
+                { "value": 144 },
+                { "value": 187 },
+                { "value": 54 },
+                { "value": 713 },
+                { "value": 713 },
+                { "value": 875 },
+                { "value": 578 }
+              ],
+              [
+                { "value": 657 },
+                { "value": 838 },
+                { "value": 979 },
+                { "value": 801 },
+                { "value": 373 },
+                { "value": 658 },
+                { "value": 629 },
+                { "value": 159 },
+                { "value": 54 },
+                { "value": 421 }
+              ],
+              [
+                { "value": 611 },
+                { "value": 79 },
+                { "value": 874 },
+                { "value": 308 },
+                { "value": 241 },
+                { "value": 269 },
+                { "value": 39 },
+                { "value": 470 },
+                { "value": 220 },
+                { "value": 543 }
+              ],
+              [
+                { "value": 254 },
+                { "value": 310 },
+                { "value": 255 },
+                { "value": 199 },
+                { "value": 482 },
+                { "value": 648 },
+                { "value": 442 },
+                { "value": 27 },
+                { "value": 478 },
+                { "value": 91 }
+              ],
+              [
+                { "value": 510 },
+                { "value": 429 },
+                { "value": 270 },
+                { "value": 654 },
+                { "value": 671 },
+                { "value": 65 },
+                { "value": 859 },
+                { "value": 772 },
+                { "value": 776 },
+                { "value": 49 }
+              ],
+              [
+                { "value": 550 },
+                { "value": 555 },
+                { "value": 155 },
+                { "value": 421 },
+                { "value": 42 },
+                { "value": 788 },
+                { "value": 367 },
+                { "value": 868 },
+                { "value": 7 },
+                { "value": 693 }
+              ],
+              [
+                { "value": 791 },
+                { "value": 545 },
+                { "value": 652 },
+                { "value": 352 },
+                { "value": 365 },
+                { "value": 445 },
+                { "value": 713 },
+                { "value": 705 },
+                { "value": 532 },
+                { "value": 639 }
+              ],
+              [
+                { "value": 837 },
+                { "value": 270 },
+                { "value": 460 },
+                { "value": 643 },
+                { "value": 89 },
+                { "value": 282 },
+                { "value": 209 },
+                { "value": 860 },
+                { "value": 830 },
+                { "value": 383 }
+              ],
+              [
+                { "value": 917 },
+                { "value": 460 },
+                { "value": 832 },
+                { "value": 358 },
+                { "value": 859 },
+                { "value": 757 },
+                { "value": 942 },
+                { "value": 605 },
+                { "value": 169 },
+                { "value": 439 }
+              ],
+              [
+                { "value": 132 },
+                { "value": 118 },
+                { "value": 806 },
+                { "value": 446 },
+                { "value": 356 },
+                { "value": 91 },
+                { "value": 985 },
+                { "value": 915 },
+                { "value": 222 },
+                { "value": 228 }
+              ],
+              [
+                { "value": 818 },
+                { "value": 886 },
+                { "value": 876 },
+                { "value": 726 },
+                { "value": 805 },
+                { "value": 561 },
+                { "value": 14 },
+                { "value": 182 },
+                { "value": 902 },
+                { "value": 329 }
+              ],
+              [
+                { "value": 366 },
+                { "value": 699 },
+                { "value": 581 },
+                { "value": 936 },
+                { "value": 445 },
+                { "value": 313 },
+                { "value": 881 },
+                { "value": 162 },
+                { "value": 803 },
+                { "value": 566 }
+              ],
+              [
+                { "value": 830 },
+                { "value": 808 },
+                { "value": 806 },
+                { "value": 846 },
+                { "value": 170 },
+                { "value": 529 },
+                { "value": 524 },
+                { "value": 520 },
+                { "value": 43 },
+                { "value": 112 }
+              ],
+              [
+                { "value": 115 },
+                { "value": 431 },
+                { "value": 429 },
+                { "value": 559 },
+                { "value": 929 },
+                { "value": 371 },
+                { "value": 25 },
+                { "value": 715 },
+                { "value": 998 },
+                { "value": 356 }
+              ],
+              [
+                { "value": 110 },
+                { "value": 84 },
+                { "value": 279 },
+                { "value": 274 },
+                { "value": 926 },
+                { "value": 770 },
+                { "value": 148 },
+                { "value": 867 },
+                { "value": 859 },
+                { "value": 44 }
+              ],
+              [
+                { "value": 789 },
+                { "value": 657 },
+                { "value": 904 },
+                { "value": 922 },
+                { "value": 888 },
+                { "value": 661 },
+                { "value": 620 },
+                { "value": 181 },
+                { "value": 977 },
+                { "value": 271 }
+              ],
+              [
+                { "value": 271 },
+                { "value": 701 },
+                { "value": 556 },
+                { "value": 696 },
+                { "value": 394 },
+                { "value": 810 },
+                { "value": 697 },
+                { "value": 436 },
+                { "value": 298 },
+                { "value": 656 }
+              ],
+              [
+                { "value": 363 },
+                { "value": 104 },
+                { "value": 900 },
+                { "value": 540 },
+                { "value": 536 },
+                { "value": 54 },
+                { "value": 341 },
+                { "value": 944 },
+                { "value": 504 },
+                { "value": 31 }
+              ],
+              [
+                { "value": 824 },
+                { "value": 458 },
+                { "value": 979 },
+                { "value": 762 },
+                { "value": 469 },
+                { "value": 834 },
+                { "value": 51 },
+                { "value": 271 },
+                { "value": 354 },
+                { "value": 444 }
+              ],
+              [
+                { "value": 793 },
+                { "value": 103 },
+                { "value": 621 },
+                { "value": 12 },
+                { "value": 563 },
+                { "value": 848 },
+                { "value": 372 },
+                { "value": 612 },
+                { "value": 438 },
+                { "value": 551 }
+              ],
+              [
+                { "value": 518 },
+                { "value": 409 },
+                { "value": 645 },
+                { "value": 979 },
+                { "value": 515 },
+                { "value": 476 },
+                { "value": 174 },
+                { "value": 422 },
+                { "value": 778 },
+                { "value": 957 }
+              ],
+              [
+                { "value": 918 },
+                { "value": 82 },
+                { "value": 343 },
+                { "value": 276 },
+                { "value": 190 },
+                { "value": 567 },
+                { "value": 575 },
+                { "value": 412 },
+                { "value": 562 },
+                { "value": 741 }
+              ],
+              [
+                { "value": 771 },
+                { "value": 891 },
+                { "value": 304 },
+                { "value": 924 },
+                { "value": 766 },
+                { "value": 624 },
+                { "value": 503 },
+                { "value": 939 },
+                { "value": 596 },
+                { "value": 996 }
+              ],
+              [
+                { "value": 252 },
+                { "value": 860 },
+                { "value": 225 },
+                { "value": 635 },
+                { "value": 524 },
+                { "value": 758 },
+                { "value": 476 },
+                { "value": 973 },
+                { "value": 378 },
+                { "value": 151 }
+              ],
+              [
+                { "value": 297 },
+                { "value": 634 },
+                { "value": 456 },
+                { "value": 823 },
+                { "value": 407 },
+                { "value": 747 },
+                { "value": 113 },
+                { "value": 584 },
+                { "value": 672 },
+                { "value": 109 }
+              ],
+              [
+                { "value": 11 },
+                { "value": 855 },
+                { "value": 19 },
+                { "value": 187 },
+                { "value": 638 },
+                { "value": 392 },
+                { "value": 788 },
+                { "value": 771 },
+                { "value": 568 },
+                { "value": 671 }
+              ],
+              [
+                { "value": 876 },
+                { "value": 375 },
+                { "value": 806 },
+                { "value": 644 },
+                { "value": 845 },
+                { "value": 511 },
+                { "value": 829 },
+                { "value": 819 },
+                { "value": 488 },
+                { "value": 795 }
+              ],
+              [
+                { "value": 626 },
+                { "value": 980 },
+                { "value": 591 },
+                { "value": 959 },
+                { "value": 891 },
+                { "value": 373 },
+                { "value": 227 },
+                { "value": 350 },
+                { "value": 97 },
+                { "value": 759 }
+              ],
+              [
+                { "value": 162 },
+                { "value": 720 },
+                { "value": 55 },
+                { "value": 594 },
+                { "value": 301 },
+                { "value": 935 },
+                { "value": 647 },
+                { "value": 960 },
+                { "value": 262 },
+                { "value": 801 }
+              ],
+              [
+                { "value": 974 },
+                { "value": 265 },
+                { "value": 143 },
+                { "value": 368 },
+                { "value": 562 },
+                { "value": 746 },
+                { "value": 8 },
+                { "value": 425 },
+                { "value": 677 },
+                { "value": 55 }
+              ],
+              [
+                { "value": 601 },
+                { "value": 626 },
+                { "value": 577 },
+                { "value": 904 },
+                { "value": 747 },
+                { "value": 112 },
+                { "value": 306 },
+                { "value": 18 },
+                { "value": 189 },
+                { "value": 1 }
+              ],
+              [
+                { "value": 122 },
+                { "value": 843 },
+                { "value": 61 },
+                { "value": 990 },
+                { "value": 561 },
+                { "value": 437 },
+                { "value": 569 },
+                { "value": 735 },
+                { "value": 713 },
+                { "value": 230 }
+              ],
+              [
+                { "value": 240 },
+                { "value": 118 },
+                { "value": 946 },
+                { "value": 836 },
+                { "value": 506 },
+                { "value": 964 },
+                { "value": 941 },
+                { "value": 140 },
+                { "value": 943 },
+                { "value": 129 }
+              ],
+              [
+                { "value": 915 },
+                { "value": 193 },
+                { "value": 799 },
+                { "value": 172 },
+                { "value": 764 },
+                { "value": 685 },
+                { "value": 651 },
+                { "value": 688 },
+                { "value": 310 },
+                { "value": 954 }
+              ],
+              [
+                { "value": 968 },
+                { "value": 675 },
+                { "value": 45 },
+                { "value": 401 },
+                { "value": 496 },
+                { "value": 544 },
+                { "value": 510 },
+                { "value": 728 },
+                { "value": 722 },
+                { "value": 69 }
+              ],
+              [
+                { "value": 751 },
+                { "value": 312 },
+                { "value": 802 },
+                { "value": 487 },
+                { "value": 239 },
+                { "value": 510 },
+                { "value": 975 },
+                { "value": 344 },
+                { "value": 968 },
+                { "value": 171 }
+              ]
+            ],
+            "explanation": "Write large test data"
+          },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_01JeY574bG3HjA3RF2cnZ1YG"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01UsEUdJojKKe8vSHzsuYWut",
+          "content": "Would overwrite 12 non-empty cells: A1, B1, C1, A2, B2... (and 7 more). To proceed with overwriting existing data, retry with allow_overwrite set to true.",
+          "is_error": true
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "code_execution_tool_result",
+          "tool_use_id": "srvtoolu_01JeY574bG3HjA3RF2cnZ1YG",
+          "content": {
+            "type": "code_execution_result",
+            "stdout": "DataFrame shape: (100, 10)\nTotal cells: 1010 (including header)\nSerialized payload size: 16,377 bytes (16.0 KB)\n\nFirst 500 chars of payload:\n{\"sheetId\": 1, \"range\": \"A1:J101\", \"cells\": [[{\"value\": \"Col_0\"}, {\"value\": \"Col_1\"}, {\"value\": \"Col_2\"}, {\"value\": \"Col_3\"}, {\"value\": \"Col_4\"}, {\"value\": \"Col_5\"}, {\"value\": \"Col_6\"}, {\"value\": \"Col_7\"}, {\"value\": \"Col_8\"}, {\"value\": \"Col_9\"}], [{\"value\": 532}, {\"value\": 489}, {\"value\": 904}, {\"value\": 799}, {\"value\": 105}, {\"value\": 371}, {\"value\": 862}, {\"value\": 182}, {\"value\": 960}, {\"value\": 737}], [{\"value\": 57}, {\"value\": 885}, {\"value\": 239}, {\"value\": 480}, {\"value\": 760}, {\"value\": 7...\n\n--- Sending to spreadsheet ---\nResult: Would overwrite 12 non-empty cells: A1, B1, C1, A2, B2... (and 7 more). To proceed with overwriting existing data, retry with allow_overwrite set to true.\n",
+            "stderr": "",
+            "return_code": 0,
+            "content": []
+          }
+        },
+        {
+          "type": "server_tool_use",
+          "id": "srvtoolu_01X7XdKqA8uyEebtp82r2df5",
+          "name": "code_execution",
+          "input": {
+            "code": "\nimport asyncio\nimport json\nimport pandas as pd\nimport numpy as np\n\nasync def main():\n    # Recreate the same dataframe\n    np.random.seed(42)  # For reproducibility\n    rows = 100\n    cols = 10\n    \n    df = pd.DataFrame(\n        np.random.randint(1, 1000, size=(rows, cols)),\n        columns=[f\"Col_{i}\" for i in range(cols)]\n    )\n    \n    header = [{\"value\": c} for c in df.columns]\n    data_rows = [[{\"value\": int(v)} for v in row] for _, row in df.iterrows()]\n    all_cells = [header] + data_rows\n    \n    payload = {\n        \"sheetId\": 1,\n        \"range\": f\"A1:J{rows + 1}\",\n        \"cells\": all_cells,\n        \"explanation\": \"Write large test data\",\n        \"allow_overwrite\": True  # Allow it this time\n    }\n    \n    serialized = json.dumps(payload)\n    print(f\"Payload size being sent: {len(serialized):,} bytes ({len(serialized)/1024:.1f} KB)\")\n    \n    result = await set_cell_range(payload)\n    print(f\"Result: {result}\")\n\nasyncio.run(main())\n"
+          },
+          "caller": { "type": "direct" }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_01VLFuLDYEx4T7UStQMtVAmw",
+          "name": "set_cell_range",
+          "input": {
+            "sheetId": 1,
+            "range": "A1:J101",
+            "cells": [
+              [
+                { "value": "Col_0" },
+                { "value": "Col_1" },
+                { "value": "Col_2" },
+                { "value": "Col_3" },
+                { "value": "Col_4" },
+                { "value": "Col_5" },
+                { "value": "Col_6" },
+                { "value": "Col_7" },
+                { "value": "Col_8" },
+                { "value": "Col_9" }
+              ],
+              [
+                { "value": 103 },
+                { "value": 436 },
+                { "value": 861 },
+                { "value": 271 },
+                { "value": 107 },
+                { "value": 72 },
+                { "value": 701 },
+                { "value": 21 },
+                { "value": 615 },
+                { "value": 122 }
+              ],
+              [
+                { "value": 467 },
+                { "value": 215 },
+                { "value": 331 },
+                { "value": 459 },
+                { "value": 88 },
+                { "value": 373 },
+                { "value": 100 },
+                { "value": 872 },
+                { "value": 664 },
+                { "value": 131 }
+              ],
+              [
+                { "value": 662 },
+                { "value": 309 },
+                { "value": 770 },
+                { "value": 344 },
+                { "value": 492 },
+                { "value": 414 },
+                { "value": 806 },
+                { "value": 386 },
+                { "value": 192 },
+                { "value": 956 }
+              ],
+              [
+                { "value": 277 },
+                { "value": 161 },
+                { "value": 460 },
+                { "value": 314 },
+                { "value": 22 },
+                { "value": 253 },
+                { "value": 748 },
+                { "value": 857 },
+                { "value": 561 },
+                { "value": 475 }
+              ],
+              [
+                { "value": 59 },
+                { "value": 511 },
+                { "value": 682 },
+                { "value": 476 },
+                { "value": 700 },
+                { "value": 976 },
+                { "value": 783 },
+                { "value": 190 },
+                { "value": 958 },
+                { "value": 687 }
+              ],
+              [
+                { "value": 958 },
+                { "value": 563 },
+                { "value": 876 },
+                { "value": 567 },
+                { "value": 244 },
+                { "value": 832 },
+                { "value": 505 },
+                { "value": 131 },
+                { "value": 485 },
+                { "value": 819 }
+              ],
+              [
+                { "value": 647 },
+                { "value": 21 },
+                { "value": 841 },
+                { "value": 167 },
+                { "value": 274 },
+                { "value": 388 },
+                { "value": 601 },
+                { "value": 316 },
+                { "value": 14 },
+                { "value": 242 }
+              ],
+              [
+                { "value": 777 },
+                { "value": 346 },
+                { "value": 565 },
+                { "value": 898 },
+                { "value": 340 },
+                { "value": 92 },
+                { "value": 367 },
+                { "value": 956 },
+                { "value": 455 },
+                { "value": 428 }
+              ],
+              [
+                { "value": 509 },
+                { "value": 776 },
+                { "value": 943 },
+                { "value": 35 },
+                { "value": 206 },
+                { "value": 81 },
+                { "value": 932 },
+                { "value": 562 },
+                { "value": 872 },
+                { "value": 388 }
+              ],
+              [
+                { "value": 2 },
+                { "value": 390 },
+                { "value": 566 },
+                { "value": 106 },
+                { "value": 772 },
+                { "value": 822 },
+                { "value": 477 },
+                { "value": 703 },
+                { "value": 402 },
+                { "value": 730 }
+              ],
+              [
+                { "value": 556 },
+                { "value": 162 },
+                { "value": 202 },
+                { "value": 958 },
+                { "value": 996 },
+                { "value": 270 },
+                { "value": 863 },
+                { "value": 816 },
+                { "value": 271 },
+                { "value": 456 }
+              ],
+              [
+                { "value": 462 },
+                { "value": 727 },
+                { "value": 252 },
+                { "value": 702 },
+                { "value": 296 },
+                { "value": 725 },
+                { "value": 720 },
+                { "value": 749 },
+                { "value": 338 },
+                { "value": 879 }
+              ],
+              [
+                { "value": 53 },
+                { "value": 792 },
+                { "value": 922 },
+                { "value": 217 },
+                { "value": 764 },
+                { "value": 188 },
+                { "value": 380 },
+                { "value": 493 },
+                { "value": 41 },
+                { "value": 157 }
+              ],
+              [
+                { "value": 15 },
+                { "value": 813 },
+                { "value": 65 },
+                { "value": 857 },
+                { "value": 839 },
+                { "value": 521 },
+                { "value": 344 },
+                { "value": 129 },
+                { "value": 648 },
+                { "value": 472 }
+              ],
+              [
+                { "value": 63 },
+                { "value": 139 },
+                { "value": 499 },
+                { "value": 593 },
+                { "value": 392 },
+                { "value": 675 },
+                { "value": 419 },
+                { "value": 289 },
+                { "value": 379 },
+                { "value": 773 }
+              ],
+              [
+                { "value": 490 },
+                { "value": 231 },
+                { "value": 41 },
+                { "value": 28 },
+                { "value": 135 },
+                { "value": 201 },
+                { "value": 840 },
+                { "value": 780 },
+                { "value": 930 },
+                { "value": 33 }
+              ],
+              [
+                { "value": 48 },
+                { "value": 503 },
+                { "value": 407 },
+                { "value": 574 },
+                { "value": 728 },
+                { "value": 805 },
+                { "value": 99 },
+                { "value": 684 },
+                { "value": 872 },
+                { "value": 726 }
+              ],
+              [
+                { "value": 987 },
+                { "value": 547 },
+                { "value": 961 },
+                { "value": 739 },
+                { "value": 613 },
+                { "value": 943 },
+                { "value": 462 },
+                { "value": 643 },
+                { "value": 769 },
+                { "value": 5 }
+              ],
+              [
+                { "value": 218 },
+                { "value": 503 },
+                { "value": 767 },
+                { "value": 398 },
+                { "value": 871 },
+                { "value": 795 },
+                { "value": 393 },
+                { "value": 207 },
+                { "value": 15 },
+                { "value": 858 }
+              ],
+              [
+                { "value": 554 },
+                { "value": 892 },
+                { "value": 461 },
+                { "value": 691 },
+                { "value": 575 },
+                { "value": 864 },
+                { "value": 743 },
+                { "value": 241 },
+                { "value": 564 },
+                { "value": 96 }
+              ],
+              [
+                { "value": 900 },
+                { "value": 734 },
+                { "value": 485 },
+                { "value": 407 },
+                { "value": 231 },
+                { "value": 749 },
+                { "value": 655 },
+                { "value": 171 },
+                { "value": 541 },
+                { "value": 36 }
+              ],
+              [
+                { "value": 525 },
+                { "value": 160 },
+                { "value": 839 },
+                { "value": 699 },
+                { "value": 243 },
+                { "value": 86 },
+                { "value": 796 },
+                { "value": 578 },
+                { "value": 682 },
+                { "value": 557 }
+              ],
+              [
+                { "value": 574 },
+                { "value": 953 },
+                { "value": 646 },
+                { "value": 796 },
+                { "value": 28 },
+                { "value": 620 },
+                { "value": 556 },
+                { "value": 340 },
+                { "value": 798 },
+                { "value": 958 }
+              ],
+              [
+                { "value": 331 },
+                { "value": 640 },
+                { "value": 506 },
+                { "value": 348 },
+                { "value": 473 },
+                { "value": 231 },
+                { "value": 190 },
+                { "value": 225 },
+                { "value": 385 },
+                { "value": 377 }
+              ],
+              [
+                { "value": 283 },
+                { "value": 958 },
+                { "value": 633 },
+                { "value": 628 },
+                { "value": 973 },
+                { "value": 745 },
+                { "value": 259 },
+                { "value": 359 },
+                { "value": 710 },
+                { "value": 456 }
+              ],
+              [
+                { "value": 411 },
+                { "value": 649 },
+                { "value": 318 },
+                { "value": 677 },
+                { "value": 225 },
+                { "value": 819 },
+                { "value": 234 },
+                { "value": 684 },
+                { "value": 664 },
+                { "value": 975 }
+              ],
+              [
+                { "value": 827 },
+                { "value": 374 },
+                { "value": 672 },
+                { "value": 608 },
+                { "value": 472 },
+                { "value": 233 },
+                { "value": 692 },
+                { "value": 113 },
+                { "value": 830 },
+                { "value": 497 }
+              ],
+              [
+                { "value": 442 },
+                { "value": 564 },
+                { "value": 268 },
+                { "value": 510 },
+                { "value": 807 },
+                { "value": 386 },
+                { "value": 387 },
+                { "value": 113 },
+                { "value": 613 },
+                { "value": 625 }
+              ],
+              [
+                { "value": 952 },
+                { "value": 81 },
+                { "value": 699 },
+                { "value": 113 },
+                { "value": 2 },
+                { "value": 642 },
+                { "value": 220 },
+                { "value": 566 },
+                { "value": 855 },
+                { "value": 997 }
+              ],
+              [
+                { "value": 736 },
+                { "value": 225 },
+                { "value": 385 },
+                { "value": 403 },
+                { "value": 638 },
+                { "value": 130 },
+                { "value": 53 },
+                { "value": 684 },
+                { "value": 730 },
+                { "value": 672 }
+              ],
+              [
+                { "value": 710 },
+                { "value": 416 },
+                { "value": 247 },
+                { "value": 836 },
+                { "value": 439 },
+                { "value": 203 },
+                { "value": 184 },
+                { "value": 123 },
+                { "value": 401 },
+                { "value": 767 }
+              ],
+              [
+                { "value": 294 },
+                { "value": 280 },
+                { "value": 837 },
+                { "value": 884 },
+                { "value": 610 },
+                { "value": 198 },
+                { "value": 982 },
+                { "value": 907 },
+                { "value": 511 },
+                { "value": 752 }
+              ],
+              [
+                { "value": 144 },
+                { "value": 609 },
+                { "value": 201 },
+                { "value": 124 },
+                { "value": 187 },
+                { "value": 326 },
+                { "value": 464 },
+                { "value": 349 },
+                { "value": 771 },
+                { "value": 660 }
+              ],
+              [
+                { "value": 764 },
+                { "value": 955 },
+                { "value": 932 },
+                { "value": 403 },
+                { "value": 346 },
+                { "value": 963 },
+                { "value": 511 },
+                { "value": 147 },
+                { "value": 148 },
+                { "value": 864 }
+              ],
+              [
+                { "value": 711 },
+                { "value": 820 },
+                { "value": 489 },
+                { "value": 929 },
+                { "value": 936 },
+                { "value": 640 },
+                { "value": 551 },
+                { "value": 338 },
+                { "value": 872 },
+                { "value": 641 }
+              ],
+              [
+                { "value": 779 },
+                { "value": 988 },
+                { "value": 953 },
+                { "value": 473 },
+                { "value": 946 },
+                { "value": 151 },
+                { "value": 415 },
+                { "value": 990 },
+                { "value": 298 },
+                { "value": 611 }
+              ],
+              [
+                { "value": 263 },
+                { "value": 764 },
+                { "value": 144 },
+                { "value": 346 },
+                { "value": 624 },
+                { "value": 572 },
+                { "value": 881 },
+                { "value": 2 },
+                { "value": 897 },
+                { "value": 304 }
+              ],
+              [
+                { "value": 254 },
+                { "value": 652 },
+                { "value": 453 },
+                { "value": 37 },
+                { "value": 160 },
+                { "value": 9 },
+                { "value": 233 },
+                { "value": 99 },
+                { "value": 659 },
+                { "value": 816 }
+              ],
+              [
+                { "value": 208 },
+                { "value": 131 },
+                { "value": 404 },
+                { "value": 152 },
+                { "value": 54 },
+                { "value": 120 },
+                { "value": 673 },
+                { "value": 920 },
+                { "value": 628 },
+                { "value": 587 }
+              ],
+              [
+                { "value": 625 },
+                { "value": 968 },
+                { "value": 420 },
+                { "value": 422 },
+                { "value": 104 },
+                { "value": 852 },
+                { "value": 254 },
+                { "value": 227 },
+                { "value": 112 },
+                { "value": 510 }
+              ],
+              [
+                { "value": 473 },
+                { "value": 99 },
+                { "value": 153 },
+                { "value": 861 },
+                { "value": 914 },
+                { "value": 896 },
+                { "value": 878 },
+                { "value": 338 },
+                { "value": 706 },
+                { "value": 822 }
+              ],
+              [
+                { "value": 163 },
+                { "value": 720 },
+                { "value": 957 },
+                { "value": 681 },
+                { "value": 996 },
+                { "value": 161 },
+                { "value": 580 },
+                { "value": 801 },
+                { "value": 398 },
+                { "value": 277 }
+              ],
+              [
+                { "value": 816 },
+                { "value": 916 },
+                { "value": 504 },
+                { "value": 896 },
+                { "value": 392 },
+                { "value": 135 },
+                { "value": 195 },
+                { "value": 401 },
+                { "value": 640 },
+                { "value": 33 }
+              ],
+              [
+                { "value": 688 },
+                { "value": 460 },
+                { "value": 955 },
+                { "value": 883 },
+                { "value": 470 },
+                { "value": 375 },
+                { "value": 22 },
+                { "value": 750 },
+                { "value": 670 },
+                { "value": 38 }
+              ],
+              [
+                { "value": 230 },
+                { "value": 365 },
+                { "value": 563 },
+                { "value": 438 },
+                { "value": 776 },
+                { "value": 283 },
+                { "value": 27 },
+                { "value": 226 },
+                { "value": 277 },
+                { "value": 798 }
+              ],
+              [
+                { "value": 609 },
+                { "value": 284 },
+                { "value": 879 },
+                { "value": 960 },
+                { "value": 481 },
+                { "value": 453 },
+                { "value": 829 },
+                { "value": 816 },
+                { "value": 659 },
+                { "value": 516 }
+              ],
+              [
+                { "value": 547 },
+                { "value": 192 },
+                { "value": 49 },
+                { "value": 512 },
+                { "value": 17 },
+                { "value": 172 },
+                { "value": 220 },
+                { "value": 158 },
+                { "value": 477 },
+                { "value": 46 }
+              ],
+              [
+                { "value": 373 },
+                { "value": 518 },
+                { "value": 99 },
+                { "value": 892 },
+                { "value": 745 },
+                { "value": 37 },
+                { "value": 280 },
+                { "value": 349 },
+                { "value": 497 },
+                { "value": 302 }
+              ],
+              [
+                { "value": 181 },
+                { "value": 607 },
+                { "value": 99 },
+                { "value": 700 },
+                { "value": 993 },
+                { "value": 116 },
+                { "value": 191 },
+                { "value": 253 },
+                { "value": 981 },
+                { "value": 928 }
+              ],
+              [
+                { "value": 983 },
+                { "value": 161 },
+                { "value": 256 },
+                { "value": 323 },
+                { "value": 128 },
+                { "value": 18 },
+                { "value": 793 },
+                { "value": 735 },
+                { "value": 566 },
+                { "value": 570 }
+              ],
+              [
+                { "value": 323 },
+                { "value": 872 },
+                { "value": 686 },
+                { "value": 792 },
+                { "value": 626 },
+                { "value": 288 },
+                { "value": 943 },
+                { "value": 854 },
+                { "value": 663 },
+                { "value": 962 }
+              ],
+              [
+                { "value": 639 },
+                { "value": 155 },
+                { "value": 490 },
+                { "value": 386 },
+                { "value": 986 },
+                { "value": 785 },
+                { "value": 104 },
+                { "value": 929 },
+                { "value": 393 },
+                { "value": 811 }
+              ],
+              [
+                { "value": 246 },
+                { "value": 176 },
+                { "value": 39 },
+                { "value": 477 },
+                { "value": 682 },
+                { "value": 759 },
+                { "value": 538 },
+                { "value": 867 },
+                { "value": 818 },
+                { "value": 921 }
+              ],
+              [
+                { "value": 408 },
+                { "value": 525 },
+                { "value": 828 },
+                { "value": 506 },
+                { "value": 903 },
+                { "value": 825 },
+                { "value": 36 },
+                { "value": 685 },
+                { "value": 20 },
+                { "value": 321 }
+              ],
+              [
+                { "value": 776 },
+                { "value": 512 },
+                { "value": 400 },
+                { "value": 654 },
+                { "value": 972 },
+                { "value": 883 },
+                { "value": 471 },
+                { "value": 143 },
+                { "value": 92 },
+                { "value": 354 }
+              ],
+              [
+                { "value": 834 },
+                { "value": 800 },
+                { "value": 727 },
+                { "value": 959 },
+                { "value": 854 },
+                { "value": 51 },
+                { "value": 665 },
+                { "value": 698 },
+                { "value": 575 },
+                { "value": 190 }
+              ],
+              [
+                { "value": 125 },
+                { "value": 150 },
+                { "value": 314 },
+                { "value": 570 },
+                { "value": 342 },
+                { "value": 305 },
+                { "value": 692 },
+                { "value": 682 },
+                { "value": 838 },
+                { "value": 783 }
+              ],
+              [
+                { "value": 54 },
+                { "value": 444 },
+                { "value": 613 },
+                { "value": 993 },
+                { "value": 264 },
+                { "value": 53 },
+                { "value": 572 },
+                { "value": 620 },
+                { "value": 5 },
+                { "value": 103 }
+              ],
+              [
+                { "value": 196 },
+                { "value": 774 },
+                { "value": 877 },
+                { "value": 992 },
+                { "value": 884 },
+                { "value": 350 },
+                { "value": 47 },
+                { "value": 867 },
+                { "value": 823 },
+                { "value": 936 }
+              ],
+              [
+                { "value": 820 },
+                { "value": 656 },
+                { "value": 269 },
+                { "value": 370 },
+                { "value": 636 },
+                { "value": 106 },
+                { "value": 670 },
+                { "value": 659 },
+                { "value": 657 },
+                { "value": 120 }
+              ],
+              [
+                { "value": 831 },
+                { "value": 787 },
+                { "value": 604 },
+                { "value": 58 },
+                { "value": 951 },
+                { "value": 346 },
+                { "value": 741 },
+                { "value": 474 },
+                { "value": 117 },
+                { "value": 830 }
+              ],
+              [
+                { "value": 791 },
+                { "value": 127 },
+                { "value": 393 },
+                { "value": 908 },
+                { "value": 641 },
+                { "value": 58 },
+                { "value": 634 },
+                { "value": 513 },
+                { "value": 751 },
+                { "value": 802 }
+              ],
+              [
+                { "value": 96 },
+                { "value": 638 },
+                { "value": 118 },
+                { "value": 560 },
+                { "value": 601 },
+                { "value": 488 },
+                { "value": 237 },
+                { "value": 885 },
+                { "value": 897 },
+                { "value": 272 }
+              ],
+              [
+                { "value": 189 },
+                { "value": 999 },
+                { "value": 704 },
+                { "value": 447 },
+                { "value": 581 },
+                { "value": 790 },
+                { "value": 861 },
+                { "value": 247 },
+                { "value": 963 },
+                { "value": 76 }
+              ],
+              [
+                { "value": 154 },
+                { "value": 656 },
+                { "value": 435 },
+                { "value": 997 },
+                { "value": 86 },
+                { "value": 697 },
+                { "value": 285 },
+                { "value": 974 },
+                { "value": 220 },
+                { "value": 69 }
+              ],
+              [
+                { "value": 47 },
+                { "value": 94 },
+                { "value": 750 },
+                { "value": 958 },
+                { "value": 453 },
+                { "value": 204 },
+                { "value": 912 },
+                { "value": 218 },
+                { "value": 474 },
+                { "value": 432 }
+              ],
+              [
+                { "value": 341 },
+                { "value": 551 },
+                { "value": 612 },
+                { "value": 289 },
+                { "value": 254 },
+                { "value": 734 },
+                { "value": 357 },
+                { "value": 23 },
+                { "value": 762 },
+                { "value": 522 }
+              ],
+              [
+                { "value": 758 },
+                { "value": 837 },
+                { "value": 100 },
+                { "value": 802 },
+                { "value": 180 },
+                { "value": 223 },
+                { "value": 906 },
+                { "value": 762 },
+                { "value": 659 },
+                { "value": 442 }
+              ],
+              [
+                { "value": 608 },
+                { "value": 769 },
+                { "value": 325 },
+                { "value": 516 },
+                { "value": 16 },
+                { "value": 792 },
+                { "value": 336 },
+                { "value": 759 },
+                { "value": 258 },
+                { "value": 497 }
+              ],
+              [
+                { "value": 988 },
+                { "value": 896 },
+                { "value": 160 },
+                { "value": 475 },
+                { "value": 852 },
+                { "value": 664 },
+                { "value": 908 },
+                { "value": 690 },
+                { "value": 675 },
+                { "value": 380 }
+              ],
+              [
+                { "value": 545 },
+                { "value": 929 },
+                { "value": 957 },
+                { "value": 691 },
+                { "value": 427 },
+                { "value": 613 },
+                { "value": 268 },
+                { "value": 835 },
+                { "value": 577 },
+                { "value": 417 }
+              ],
+              [
+                { "value": 168 },
+                { "value": 842 },
+                { "value": 43 },
+                { "value": 556 },
+                { "value": 285 },
+                { "value": 397 },
+                { "value": 12 },
+                { "value": 607 },
+                { "value": 302 },
+                { "value": 898 }
+              ],
+              [
+                { "value": 253 },
+                { "value": 499 },
+                { "value": 754 },
+                { "value": 35 },
+                { "value": 727 },
+                { "value": 849 },
+                { "value": 90 },
+                { "value": 776 },
+                { "value": 605 },
+                { "value": 922 }
+              ],
+              [
+                { "value": 970 },
+                { "value": 602 },
+                { "value": 418 },
+                { "value": 115 },
+                { "value": 617 },
+                { "value": 903 },
+                { "value": 196 },
+                { "value": 826 },
+                { "value": 501 },
+                { "value": 626 }
+              ],
+              [
+                { "value": 493 },
+                { "value": 75 },
+                { "value": 413 },
+                { "value": 376 },
+                { "value": 420 },
+                { "value": 729 },
+                { "value": 277 },
+                { "value": 761 },
+                { "value": 676 },
+                { "value": 394 }
+              ],
+              [
+                { "value": 869 },
+                { "value": 457 },
+                { "value": 920 },
+                { "value": 192 },
+                { "value": 739 },
+                { "value": 689 },
+                { "value": 99 },
+                { "value": 548 },
+                { "value": 978 },
+                { "value": 999 }
+              ],
+              [
+                { "value": 96 },
+                { "value": 664 },
+                { "value": 663 },
+                { "value": 190 },
+                { "value": 736 },
+                { "value": 37 },
+                { "value": 780 },
+                { "value": 369 },
+                { "value": 695 },
+                { "value": 525 }
+              ],
+              [
+                { "value": 279 },
+                { "value": 217 },
+                { "value": 867 },
+                { "value": 873 },
+                { "value": 798 },
+                { "value": 273 },
+                { "value": 881 },
+                { "value": 62 },
+                { "value": 596 },
+                { "value": 880 }
+              ],
+              [
+                { "value": 729 },
+                { "value": 342 },
+                { "value": 397 },
+                { "value": 699 },
+                { "value": 19 },
+                { "value": 177 },
+                { "value": 612 },
+                { "value": 396 },
+                { "value": 445 },
+                { "value": 233 }
+              ],
+              [
+                { "value": 915 },
+                { "value": 76 },
+                { "value": 265 },
+                { "value": 455 },
+                { "value": 796 },
+                { "value": 718 },
+                { "value": 735 },
+                { "value": 384 },
+                { "value": 564 },
+                { "value": 851 }
+              ],
+              [
+                { "value": 506 },
+                { "value": 367 },
+                { "value": 144 },
+                { "value": 885 },
+                { "value": 69 },
+                { "value": 99 },
+                { "value": 396 },
+                { "value": 25 },
+                { "value": 948 },
+                { "value": 891 }
+              ],
+              [
+                { "value": 469 },
+                { "value": 484 },
+                { "value": 565 },
+                { "value": 151 },
+                { "value": 144 },
+                { "value": 569 },
+                { "value": 39 },
+                { "value": 109 },
+                { "value": 693 },
+                { "value": 42 }
+              ],
+              [
+                { "value": 186 },
+                { "value": 935 },
+                { "value": 398 },
+                { "value": 223 },
+                { "value": 634 },
+                { "value": 133 },
+                { "value": 163 },
+                { "value": 215 },
+                { "value": 733 },
+                { "value": 235 }
+              ],
+              [
+                { "value": 843 },
+                { "value": 658 },
+                { "value": 751 },
+                { "value": 588 },
+                { "value": 9 },
+                { "value": 74 },
+                { "value": 954 },
+                { "value": 492 },
+                { "value": 913 },
+                { "value": 253 }
+              ],
+              [
+                { "value": 230 },
+                { "value": 519 },
+                { "value": 174 },
+                { "value": 653 },
+                { "value": 168 },
+                { "value": 170 },
+                { "value": 393 },
+                { "value": 946 },
+                { "value": 795 },
+                { "value": 634 }
+              ],
+              [
+                { "value": 194 },
+                { "value": 517 },
+                { "value": 29 },
+                { "value": 165 },
+                { "value": 422 },
+                { "value": 339 },
+                { "value": 648 },
+                { "value": 496 },
+                { "value": 365 },
+                { "value": 833 }
+              ],
+              [
+                { "value": 342 },
+                { "value": 500 },
+                { "value": 657 },
+                { "value": 511 },
+                { "value": 327 },
+                { "value": 217 },
+                { "value": 301 },
+                { "value": 132 },
+                { "value": 804 },
+                { "value": 70 }
+              ],
+              [
+                { "value": 252 },
+                { "value": 415 },
+                { "value": 787 },
+                { "value": 445 },
+                { "value": 876 },
+                { "value": 182 },
+                { "value": 167 },
+                { "value": 91 },
+                { "value": 714 },
+                { "value": 858 }
+              ],
+              [
+                { "value": 531 },
+                { "value": 39 },
+                { "value": 126 },
+                { "value": 451 },
+                { "value": 173 },
+                { "value": 653 },
+                { "value": 754 },
+                { "value": 220 },
+                { "value": 638 },
+                { "value": 58 }
+              ],
+              [
+                { "value": 660 },
+                { "value": 476 },
+                { "value": 456 },
+                { "value": 829 },
+                { "value": 895 },
+                { "value": 361 },
+                { "value": 935 },
+                { "value": 1 },
+                { "value": 387 },
+                { "value": 973 }
+              ],
+              [
+                { "value": 348 },
+                { "value": 190 },
+                { "value": 505 },
+                { "value": 191 },
+                { "value": 508 },
+                { "value": 369 },
+                { "value": 409 },
+                { "value": 824 },
+                { "value": 929 },
+                { "value": 934 }
+              ],
+              [
+                { "value": 117 },
+                { "value": 134 },
+                { "value": 58 },
+                { "value": 556 },
+                { "value": 685 },
+                { "value": 672 },
+                { "value": 173 },
+                { "value": 829 },
+                { "value": 815 },
+                { "value": 149 }
+              ],
+              [
+                { "value": 80 },
+                { "value": 886 },
+                { "value": 213 },
+                { "value": 203 },
+                { "value": 764 },
+                { "value": 229 },
+                { "value": 676 },
+                { "value": 227 },
+                { "value": 659 },
+                { "value": 532 }
+              ],
+              [
+                { "value": 441 },
+                { "value": 402 },
+                { "value": 47 },
+                { "value": 233 },
+                { "value": 305 },
+                { "value": 526 },
+                { "value": 143 },
+                { "value": 415 },
+                { "value": 513 },
+                { "value": 373 }
+              ],
+              [
+                { "value": 566 },
+                { "value": 886 },
+                { "value": 259 },
+                { "value": 656 },
+                { "value": 471 },
+                { "value": 953 },
+                { "value": 971 },
+                { "value": 12 },
+                { "value": 330 },
+                { "value": 736 }
+              ],
+              [
+                { "value": 784 },
+                { "value": 968 },
+                { "value": 358 },
+                { "value": 972 },
+                { "value": 408 },
+                { "value": 668 },
+                { "value": 373 },
+                { "value": 8 },
+                { "value": 122 },
+                { "value": 348 }
+              ],
+              [
+                { "value": 676 },
+                { "value": 90 },
+                { "value": 648 },
+                { "value": 698 },
+                { "value": 316 },
+                { "value": 178 },
+                { "value": 540 },
+                { "value": 732 },
+                { "value": 869 },
+                { "value": 41 }
+              ],
+              [
+                { "value": 740 },
+                { "value": 704 },
+                { "value": 923 },
+                { "value": 502 },
+                { "value": 959 },
+                { "value": 145 },
+                { "value": 201 },
+                { "value": 929 },
+                { "value": 724 },
+                { "value": 461 }
+              ],
+              [
+                { "value": 732 },
+                { "value": 752 },
+                { "value": 925 },
+                { "value": 909 },
+                { "value": 558 },
+                { "value": 547 },
+                { "value": 253 },
+                { "value": 390 },
+                { "value": 594 },
+                { "value": 883 }
+              ],
+              [
+                { "value": 256 },
+                { "value": 709 },
+                { "value": 815 },
+                { "value": 921 },
+                { "value": 450 },
+                { "value": 10 },
+                { "value": 824 },
+                { "value": 798 },
+                { "value": 242 },
+                { "value": 251 }
+              ]
+            ],
+            "explanation": "Write large test data",
+            "allow_overwrite": true
+          },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_01X7XdKqA8uyEebtp82r2df5"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01VLFuLDYEx4T7UStQMtVAmw",
+          "content": "{\"success\":true}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "code_execution_tool_result",
+          "tool_use_id": "srvtoolu_01X7XdKqA8uyEebtp82r2df5",
+          "content": {
+            "type": "code_execution_result",
+            "stdout": "Payload size being sent: 16,405 bytes (16.0 KB)\nResult: {\"success\":true}\n",
+            "stderr": "",
+            "return_code": 0,
+            "content": []
+          }
+        },
+        {
+          "type": "text",
+          "text": "Check your network tab — did you see a ~16KB payload come through the SSE stream?\n\n## So yes, the answer is:\n\n**The entire serialized cell data flows through the SSE stream to your add-in.**\n\nFor 100 rows × 10 cols = 1,010 cells, that was 16KB. If you scale that up:\n\n| Size | Cells | Estimated Payload |\n|------|-------|-------------------|\n| 100 × 10 | 1,000 | ~16 KB |\n| 500 × 20 | 10,000 | ~160 KB |\n| 1000 × 26 | 26,000 | ~400+ KB |\n\nThis explains why the system instructions mention chunking writes to ~500 rows — you don't want to blast megabytes through that SSE stream.\n\n**The Python container is really just:**\n1. A place to run pandas/numpy logic\n2. A serializer that converts dataframes → JSON cell payloads\n3. The actual data transfer still goes client-side through you\n\nDid the 16KB show up in your devtools?"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "<user_changes>\n[FormatChanged] sheetName:\"Sheet1\" sheetId:1 range:C5\n</user_changes>"
+        },
+        {
+          "type": "text",
+          "text": "hmm it actually looks to me like the server is intercepting and parsing the `code_execution` blocks.\n\ncontent: Array (3)\n0\nObject\n\ntext: \"Ah, good point! Let me test that — if I write a large dataframe, does the entire serialized payload go through the SSE stream to you…\"\n\ntype: \"text\"\n1\nObject\n\ncaller: {type: \"direct\"}\n\nid: \"srvtoolu_01JeY574bG3HjA3RF2cnZ1YG\"\n\ninput: Object\n\ncode: \"↵import asyncio↵import json↵import pandas as pd↵import numpy as np↵↵async def main():↵    # Create a moderately large dataframe↵    rows …\"\n\nname: \"code_execution\"\n\ntype: \"server_tool_use\"\n2\nObject\n\ncaller: {type: \"code_execution_20250825\", tool_id: \"srvtoolu_01JeY574bG3HjA3RF2cnZ1YG\"}\n\nid: \"toolu_01UsEUdJojKKe8vSHzsuYWut\"\n\ninput: Object\n\ncells: [Array, Array, Array, Array, Array, Array, Array, Array, Array, Array, …] (101)\n\nexplanation: \"Write large test data\"\n\nrange: \"A1:J101\"\n\nsheetId: 1\n\nname: \"set_cell_range\"\n\ntype: \"tool_use\"\n\nrole: “assistant\"\n\nObject\n\ncontent: Array (1)\n0\nObject\n\ncontent: \"Would overwrite 12 non-empty cells: A1, B1, C1, A2, B2... (and 7 more). To proceed with overwriting existing data, retry wit…\"\n\nis_error: true\n\ntool_use_id: \"toolu_01UsEUdJojKKe8vSHzsuYWut\"\n\ntype: \"tool_result\"\n\nrole: \"user\"\n21\nObject\n\ncontent: Array (3)\n0\nObject\n\ncontent: Object\n\ncontent: [] (0)\n\nreturn_code: 0\n\nstderr: \"\"\n\nstdout: \"DataFrame shape: (100, 10)↵Total cells: 1010 (including header)↵Serialized payload size: 16,377 bytes (16.0 KB)↵↵First 500 chars o…\"\n\ntype: \"code_execution_result\"\n\ntool_use_id: \"srvtoolu_01JeY574bG3HjA3RF2cnZ1YG\"\n\ntype: \"code_execution_tool_result\"\n1\n{type: \"server_tool_use\", id: \"srvtoolu_01X7XdKqA8uyEebtp82r2df5\", name: \"code_execution\", input: {code: \"↵import asyncio↵import json↵import pandas as pd↵im… print(f\\\"Result: {result}\\\")↵↵asyncio.run(main())↵\"}, caller: {type: \"direct\"}}\n2\n{type: \"tool_use\", id: \"toolu_01VLFuLDYEx4T7UStQMtVAmw\", name: \"set_cell_range\", input: Object, caller: {type: \"code_execution_20250825\", tool_id: \"srvtoolu_01X7XdKqA8uyEebtp82r2df5\"}}\n\nrole: \"assistant\"\n22\nObject\n\ncontent: [{type: \"tool_result\", tool_use_id: \"toolu_01VLFuLDYEx4T7UStQMtVAmw\", content: \"{\\\"success\\\":true}\"}] (1)\n\nrole: \"user\""
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "This is fascinating — you've reverse-engineered the architecture! Let me break down what you found:\n\n## The Actual Flow\n\n```\n┌────────────────────────────────────────────────────────────────────────────┐\n│                          ANTHROPIC SERVERS                                 │\n│                                                                            │\n│  ┌─────────────┐      ┌─────────────────┐      ┌─────────────────┐        │\n│  │   Claude    │ ──►  │  Orchestrator   │ ──►  │ Python Container │        │\n│  │  (generates │      │  (intercepts    │      │ (runs code,      │        │\n│  │   code)     │      │   code_execution│      │  yields tool     │        │\n│  └─────────────┘      │   blocks)       │      │  calls)          │        │\n│                       └────────┬────────┘      └─────────────────┘        │\n│                                │                                           │\n│                                │ Extracts nested tool_use                  │\n│                                ▼                                           │\n└────────────────────────────────┬───────────────────────────────────────────┘\n                                 │\n                            SSE stream\n                                 │\n                                 ▼\n                    ┌────────────────────────┐\n                    │  Your Excel Add-in     │\n                    │  (receives tool calls, │\n                    │   executes locally,    │\n                    │   returns results)     │\n                    └────────────────────────┘\n```\n\n## Key Evidence From Your SSE Dump\n\n1. **`server_tool_use`** with `name: \"code_execution\"` — the Python code runs server-side\n2. **Nested `tool_use`** with `caller: {type: \"code_execution_20250825\", tool_id: \"...\"}` — the orchestrator extracts my `await set_cell_range()` call and emits it as a real tool call\n3. **Your add-in responds** with `tool_result` \n4. **Result fed back** as `code_execution_tool_result` containing stdout\n\n## So the magic is:\n\nThe **orchestrator parses the Python code's async calls**, intercepts them, converts them to regular `tool_use` blocks, sends them to you, gets results, and **injects them back into the container's execution** before resuming.\n\nYour add-in doesn't need to know or care that the call originated from Python — it just sees a normal `set_cell_range` tool call and responds.\n\nThat `caller` field is the smoking gun:\n```javascript\ncaller: {type: \"code_execution_20250825\", tool_id: \"srvtoolu_01X7XdKqA8uyEebtp82r2df5\"}\n```\n\nIt's tagging where the tool call came from so results can be routed back correctly!"
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Hmm so how do u think its doing this? literally regex?"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "text",
+          "text": "Ha! Probably not regex (though never underestimate regex in production systems 😅).\n\nMy guess is something like this:\n\n## Option 1: Custom Async Runtime / Mocked Functions\n\nThe container has pre-defined async functions that don't do real I/O:\n\n```python\n# What's probably injected into the container environment\n\n_pending_tool_calls = []\n\nasync def get_range_as_csv(params):\n    call_id = generate_id()\n    _pending_tool_calls.append({\n        \"id\": call_id,\n        \"name\": \"get_range_as_csv\", \n        \"input\": params\n    })\n    # Yield control - this is where execution \"pauses\"\n    result = await _wait_for_result(call_id)\n    return result\n```\n\nWhen `asyncio.run(main())` completes (or hits an await), the runtime:\n1. Collects all `_pending_tool_calls`\n2. Serializes them out to the orchestrator\n3. Waits for results\n4. Injects results back and resumes\n\n## Option 2: AST Transformation\n\nBefore execution, they parse the Python code and transform it:\n\n```python\n# Your code\nresult = await get_range_as_csv({\"sheetId\": 1, \"range\": \"A1:C4\"})\n\n# Gets transformed to something like\nresult = __tool_call__(\"get_range_as_csv\", {\"sheetId\": 1, \"range\": \"A1:C4\"})\n```\n\n## Option 3: Custom Event Loop\n\nThey provide a custom `asyncio` event loop that intercepts coroutines:\n\n```python\nclass ToolCallEventLoop(asyncio.BaseEventLoop):\n    def run_until_complete(self, coro):\n        # Run until we hit a tool call await\n        # Capture the call, yield to orchestrator\n        # Resume when result arrives\n```\n\n---\n\nMy bet is **Option 1** — simplest to implement. The functions are just stubs that accumulate calls, and the async machinery handles the pause/resume naturally.\n\nWant me to try to probe it? I could inspect what these functions actually are:"
+        },
+        {
+          "type": "server_tool_use",
+          "id": "srvtoolu_0156kiNt6bmGz2NrtjXVYdw3",
+          "name": "code_execution",
+          "input": {
+            "code": "\nimport asyncio\n\n# Let's inspect what these \"functions\" actually are\nprint(\"=== Inspecting get_range_as_csv ===\")\nprint(f\"Type: {type(get_range_as_csv)}\")\nprint(f\"Module: {getattr(get_range_as_csv, '__module__', 'N/A')}\")\nprint(f\"Name: {getattr(get_range_as_csv, '__name__', 'N/A')}\")\nprint(f\"Doc: {getattr(get_range_as_csv, '__doc__', 'N/A')[:200] if get_range_as_csv.__doc__ else 'N/A'}...\")\n\nprint(\"\\n=== Dir of function ===\")\nprint([x for x in dir(get_range_as_csv) if not x.startswith('_')])\n\nprint(\"\\n=== Is it a coroutine function? ===\")\nprint(f\"asyncio.iscoroutinefunction: {asyncio.iscoroutinefunction(get_range_as_csv)}\")\n\nprint(\"\\n=== Checking globals for clues ===\")\ntool_related = [k for k in globals().keys() if 'tool' in k.lower() or 'cell' in k.lower() or 'range' in k.lower() or 'sheet' in k.lower()]\nprint(f\"Tool-related globals: {tool_related}\")\n\nprint(\"\\n=== All non-dunder globals ===\")\nall_globals = [k for k in globals().keys() if not k.startswith('__')]\nprint(all_globals)\n"
+          },
+          "caller": { "type": "direct" }
+        },
+        {
+          "type": "code_execution_tool_result",
+          "tool_use_id": "srvtoolu_0156kiNt6bmGz2NrtjXVYdw3",
+          "content": {
+            "type": "code_execution_result",
+            "stdout": "=== Inspecting get_range_as_csv ===\nType: <class 'function'>\nModule: __main__\nName: get_range_as_csv\nDoc: N/A...\n\n=== Dir of function ===\n[]\n\n=== Is it a coroutine function? ===\nasyncio.iscoroutinefunction: True\n\n=== Checking globals for clues ===\nTool-related globals: ['server_tool_use_id', 'PFCToolCallRegistry', '_call_client_tool', 'get_cell_ranges', 'get_range_as_csv', 'set_cell_range']\n\n=== All non-dunder globals ===\n['asyncio', 'atexit', 'io', 'json', 'os', 'sys', 'time', 'uuid', 'Any', 'server_tool_use_id', 'pfc_dir', '_original_stdout', '_original_stderr', '_captured_stdout', '_captured_stderr', 'PFCToolCallRegistry', '_call_client_tool', 'dump_completion_status', 'get_cell_ranges', 'get_range_as_csv', 'set_cell_range', 'tool_related']\n",
+            "stderr": "",
+            "return_code": 0,
+            "content": []
+          }
+        },
+        {
+          "type": "text",
+          "text": "Look at that!\n\n```\n'PFCToolCallRegistry', '_call_client_tool'\n```\n\n**PFC** = Probably \"Python Function Calls\" or \"Proxied Function Calls\"?"
+        },
+        {
+          "type": "server_tool_use",
+          "id": "srvtoolu_01UoMfGmukDhkg1smfy43d52",
+          "name": "code_execution",
+          "input": {
+            "code": "\n# Let's dig deeper!\nprint(\"=== PFCToolCallRegistry ===\")\nprint(f\"Type: {type(PFCToolCallRegistry)}\")\nprint(f\"Value/Contents: {PFCToolCallRegistry}\")\n\nprint(\"\\n=== _call_client_tool ===\")\nprint(f\"Type: {type(_call_client_tool)}\")\nprint(f\"Is coroutine: {asyncio.iscoroutinefunction(_call_client_tool)}\")\n\n# Try to get source if possible\nimport inspect\ntry:\n    print(f\"\\n=== Source of _call_client_tool ===\")\n    print(inspect.getsource(_call_client_tool))\nexcept:\n    print(\"Could not get source\")\n\ntry:\n    print(f\"\\n=== Source of get_range_as_csv ===\")\n    print(inspect.getsource(get_range_as_csv))\nexcept Exception as e:\n    print(f\"Could not get source: {e}\")\n\nprint(f\"\\n=== server_tool_use_id ===\")\nprint(f\"Value: {server_tool_use_id}\")\n"
+          },
+          "caller": { "type": "direct" }
+        },
+        {
+          "type": "code_execution_tool_result",
+          "tool_use_id": "srvtoolu_01UoMfGmukDhkg1smfy43d52",
+          "content": {
+            "type": "code_execution_result",
+            "stdout": "=== PFCToolCallRegistry ===\nType: <class 'type'>\nValue/Contents: <class '__main__.PFCToolCallRegistry'>\n\n=== _call_client_tool ===\nType: <class 'function'>\nIs coroutine: True\n\n=== Source of _call_client_tool ===\nasync def _call_client_tool(tool_name: str, **kwargs: Any) -> Any:  # pyright: ignore[reportUnusedFunction]\n    \"\"\"Call a client tool and wait for response.\n\n    Args:\n        tool_name: Original tool name\n        **kwargs: Function arguments (should contain 'params' key)\n\n    Returns:\n        Tool result (type varies based on tool)\n    \"\"\"\n    # Validate tool_name is actually a string (type hints aren't enforced at runtime)\n    if not isinstance(tool_name, str):  # pyright: ignore[reportUnnecessaryIsInstance]\n        raise TypeError(\n            f\"tool_name must be a string, got {type(tool_name).__name__}: {tool_name!r}\"\n        )\n\n    # Generate unique ID for this custom tool call\n    custom_tool_use_id = uuid.uuid4().hex\n\n    # Extract params dict\n    params: dict[str, Any] = kwargs.get(\"params\", {})\n\n    # Write request file\n    request: dict[str, Any] = {\n        \"tool\": tool_name,\n        \"parameters\": params,\n        \"tool_use_id\": custom_tool_use_id,\n    }\n\n    request_file = f\"{pfc_dir}/{custom_tool_use_id}.request\"\n    # Blocking I/O is acceptable for small JSON files\n    with open(request_file, \"w\") as f:  # noqa: ASYNC230\n        json.dump(request, f)\n\n    # Log tool call to original stdout for Antfort tracking\n    _original_stdout.write(f\"[TOOL_CALL] {json.dumps(request)}\\n\")\n    _original_stdout.flush()\n\n    # Wait for response file to be ready (registry signals when available)\n    registry = PFCToolCallRegistry.get_instance()\n    try:\n        await registry.wait_for_response(custom_tool_use_id)\n    except asyncio.CancelledError:\n        # CancelledError means timeout (only cancellation path in this system)\n        raise TimeoutError(f\"Calling tool ['{tool_name}'] timed out.\") from None\n\n    # Read and return the result\n    response_file = f\"{pfc_dir}/{custom_tool_use_id}.response\"\n    # Blocking I/O is acceptable for small JSON files\n    with open(response_file) as f:  # noqa: ASYNC230\n        response = json.load(f)\n\n    # Log tool result to original stdout for Antfort tracking\n    _original_stdout.write(f\"[TOOL_RESULT] {json.dumps(response)}\\n\")\n    _original_stdout.flush()\n\n    return response[\"content\"]\n\n\n=== Source of get_range_as_csv ===\nasync def get_range_as_csv(params: dict) -> str:\n    return await _call_client_tool('get_range_as_csv', **locals())\n\n\n=== server_tool_use_id ===\nValue: srvtoolu_01UoMfGmukDhkg1smfy43d52\n",
+            "stderr": "",
+            "return_code": 0,
+            "content": []
+          }
+        },
+        {
+          "type": "text",
+          "text": "**THERE IT IS!** 🎉\n\n## The Actual Mechanism\n\nIt's **file-based IPC**! Not regex, not AST transformation. Simple and elegant:\n\n```python\n# 1. Write request to a file\nrequest_file = f\"{pfc_dir}/{custom_tool_use_id}.request\"\nwith open(request_file, \"w\") as f:\n    json.dump(request, f)\n\n# 2. Log to stdout for orchestrator to pick up\n_original_stdout.write(f\"[TOOL_CALL] {json.dumps(request)}\\n\")\n\n# 3. Wait for response file to appear\nawait registry.wait_for_response(custom_tool_use_id)\n\n# 4. Read result from file\nresponse_file = f\"{pfc_dir}/{custom_tool_use_id}.response\"\nwith open(response_file) as f:\n    response = json.load(f)\n```\n\n## The Flow\n\n1. **Python calls `get_range_as_csv(params)`** → thin wrapper that calls `_call_client_tool`\n2. **Writes `.request` file** and prints `[TOOL_CALL]` to stdout\n3. **Orchestrator watching stdout** sees the `[TOOL_CALL]`, extracts it, sends to your add-in\n4. **Your add-in responds**, orchestrator writes `.response` file\n5. **Registry signals**, Python resumes, reads response file\n\nThe `PFCToolCallRegistry` is just managing the async wait/notify for when response files appear.\n\nSo simple! No magic at all — just files and stdout parsing."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "cool. can you dig a bit deeper and get the the full implementation of PFCToolCallRegistry and the _call_client_tool wrapper\n\njust respond in ```py\n\nalso see how it composes when there are multiple RPC calls in one code block - it seems we only use 1 request file per tool call?"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "server_tool_use",
+          "id": "srvtoolu_01RgXnAE52bYENr141wxaLvz",
+          "name": "code_execution",
+          "input": {
+            "code": "\nimport inspect\n\nprint(\"=== Full _call_client_tool ===\")\nprint(inspect.getsource(_call_client_tool))\n\nprint(\"\\n\\n=== Full PFCToolCallRegistry ===\")\nprint(inspect.getsource(PFCToolCallRegistry))\n\nprint(\"\\n\\n=== pfc_dir value ===\")\nprint(f\"pfc_dir = {pfc_dir!r}\")\n\nprint(\"\\n\\n=== All tool wrappers ===\")\nfor name in ['get_cell_ranges', 'get_range_as_csv', 'set_cell_range']:\n    fn = globals()[name]\n    print(f\"\\n--- {name} ---\")\n    print(inspect.getsource(fn))\n"
+          },
+          "caller": { "type": "direct" }
+        },
+        {
+          "type": "code_execution_tool_result",
+          "tool_use_id": "srvtoolu_01RgXnAE52bYENr141wxaLvz",
+          "content": {
+            "type": "code_execution_result",
+            "stdout": "=== Full _call_client_tool ===\nasync def _call_client_tool(tool_name: str, **kwargs: Any) -> Any:  # pyright: ignore[reportUnusedFunction]\n    \"\"\"Call a client tool and wait for response.\n\n    Args:\n        tool_name: Original tool name\n        **kwargs: Function arguments (should contain 'params' key)\n\n    Returns:\n        Tool result (type varies based on tool)\n    \"\"\"\n    # Validate tool_name is actually a string (type hints aren't enforced at runtime)\n    if not isinstance(tool_name, str):  # pyright: ignore[reportUnnecessaryIsInstance]\n        raise TypeError(\n            f\"tool_name must be a string, got {type(tool_name).__name__}: {tool_name!r}\"\n        )\n\n    # Generate unique ID for this custom tool call\n    custom_tool_use_id = uuid.uuid4().hex\n\n    # Extract params dict\n    params: dict[str, Any] = kwargs.get(\"params\", {})\n\n    # Write request file\n    request: dict[str, Any] = {\n        \"tool\": tool_name,\n        \"parameters\": params,\n        \"tool_use_id\": custom_tool_use_id,\n    }\n\n    request_file = f\"{pfc_dir}/{custom_tool_use_id}.request\"\n    # Blocking I/O is acceptable for small JSON files\n    with open(request_file, \"w\") as f:  # noqa: ASYNC230\n        json.dump(request, f)\n\n    # Log tool call to original stdout for Antfort tracking\n    _original_stdout.write(f\"[TOOL_CALL] {json.dumps(request)}\\n\")\n    _original_stdout.flush()\n\n    # Wait for response file to be ready (registry signals when available)\n    registry = PFCToolCallRegistry.get_instance()\n    try:\n        await registry.wait_for_response(custom_tool_use_id)\n    except asyncio.CancelledError:\n        # CancelledError means timeout (only cancellation path in this system)\n        raise TimeoutError(f\"Calling tool ['{tool_name}'] timed out.\") from None\n\n    # Read and return the result\n    response_file = f\"{pfc_dir}/{custom_tool_use_id}.response\"\n    # Blocking I/O is acceptable for small JSON files\n    with open(response_file) as f:  # noqa: ASYNC230\n        response = json.load(f)\n\n    # Log tool result to original stdout for Antfort tracking\n    _original_stdout.write(f\"[TOOL_RESULT] {json.dumps(response)}\\n\")\n    _original_stdout.flush()\n\n    return response[\"content\"]\n\n\n\n=== Full PFCToolCallRegistry ===\nclass PFCToolCallRegistry:\n    \"\"\"Singleton registry managing all pending async tool calls.\n\n    Monitors response files and signals when they're ready.\n    \"\"\"\n\n    _instance: \"PFCToolCallRegistry | None\" = None\n\n    def __init__(self):\n        self._pending_calls: dict[str, asyncio.Future[None]] = {}\n        self._monitor_task: asyncio.Task[None] | None = None\n\n    @classmethod\n    def get_instance(cls) -> \"PFCToolCallRegistry\":\n        \"\"\"Get or create singleton instance.\"\"\"\n        if cls._instance is None:\n            cls._instance = cls()\n        return cls._instance\n\n    async def wait_for_response(self, custom_tool_use_id: str) -> None:\n        \"\"\"Wait for a response file to be ready.\n\n        Args:\n            custom_tool_use_id: Unique ID for this custom tool call\n        \"\"\"\n        future: asyncio.Future[None] = asyncio.Future()\n        self._pending_calls[custom_tool_use_id] = future\n\n        # Start monitor on first registration\n        if self._monitor_task is None:\n            self._monitor_task = asyncio.create_task(self._monitor_loop())\n\n        # Wait for signal (no timeout here, monitor handles overall timeout)\n        await future\n\n    async def _monitor_loop(self):\n        \"\"\"Single monitoring loop with inactivity timeout.\n\n        Checks all response files in one directory scan, signals futures when ready.\n        Times out after 10 minutes of no activity (no new responses found).\n        \"\"\"\n\n        last_activity = time.time()\n        timeout_seconds = 270  # 4.5 minutes. Currently the container lives for 5 minutes. Set to 4.5 to give the prompt cache to be conserved. May adjust timeout once the container can live for 10 minutes\n\n        while True:  # Run until timeout or script exits\n            if self._pending_calls:\n                # Get all files in directory (single syscall)\n                files = os.listdir(pfc_dir)\n\n                # Filter for response files\n                response_files = {f for f in files if f.endswith(\".response\")}\n\n                to_remove: list[str] = []\n                # Check which pending calls have responses ready\n                for custom_tool_use_id, future in self._pending_calls.items():\n                    response_filename = f\"{custom_tool_use_id}.response\"\n                    if response_filename in response_files:\n                        if not future.done():\n                            future.set_result(None)\n                        to_remove.append(custom_tool_use_id)\n                        last_activity = time.time()\n\n                for custom_tool_use_id in to_remove:\n                    del self._pending_calls[custom_tool_use_id]\n\n                # Check for inactivity timeout\n                if time.time() - last_activity > timeout_seconds:\n                    # Timeout - cancel all pending futures\n                    for future in self._pending_calls.values():\n                        if not future.done():\n                            future.cancel()\n                    return  # noqa: ASYNC910 not to use trio\n\n            await asyncio.sleep(0.1)\n\n\n\n=== pfc_dir value ===\npfc_dir = '/tmp/srvtoolu_01RgXnAE52bYENr141wxaLvz'\n\n\n=== All tool wrappers ===\n\n--- get_cell_ranges ---\nasync def get_cell_ranges(params: dict) -> str:\n    return await _call_client_tool('get_cell_ranges', **locals())\n\n\n--- get_range_as_csv ---\nasync def get_range_as_csv(params: dict) -> str:\n    return await _call_client_tool('get_range_as_csv', **locals())\n\n\n--- set_cell_range ---\nasync def set_cell_range(params: dict) -> str:\n    return await _call_client_tool('set_cell_range', **locals())\n\n",
+            "stderr": "",
+            "return_code": 0,
+            "content": []
+          }
+        },
+        {
+          "type": "text",
+          "text": "```python\nimport asyncio\nimport json\nimport os\nimport time\nimport uuid\nfrom typing import Any\n\n\n# Directory for IPC files - unique per code_execution invocation\npfc_dir = '/tmp/srvtoolu_01RgXnAE52bYENr141wxaLvz'\n\n\nclass PFCToolCallRegistry:\n    \"\"\"Singleton registry managing all pending async tool calls.\n\n    Monitors response files and signals when they're ready.\n    \"\"\"\n\n    _instance: \"PFCToolCallRegistry | None\" = None\n\n    def __init__(self):\n        self._pending_calls: dict[str, asyncio.Future[None]] = {}\n        self._monitor_task: asyncio.Task[None] | None = None\n\n    @classmethod\n    def get_instance(cls) -> \"PFCToolCallRegistry\":\n        \"\"\"Get or create singleton instance.\"\"\"\n        if cls._instance is None:\n            cls._instance = cls()\n        return cls._instance\n\n    async def wait_for_response(self, custom_tool_use_id: str) -> None:\n        \"\"\"Wait for a response file to be ready.\n\n        Args:\n            custom_tool_use_id: Unique ID for this custom tool call\n        \"\"\"\n        future: asyncio.Future[None] = asyncio.Future()\n        self._pending_calls[custom_tool_use_id] = future\n\n        # Start monitor on first registration\n        if self._monitor_task is None:\n            self._monitor_task = asyncio.create_task(self._monitor_loop())\n\n        # Wait for signal (no timeout here, monitor handles overall timeout)\n        await future\n\n    async def _monitor_loop(self):\n        \"\"\"Single monitoring loop with inactivity timeout.\n\n        Checks all response files in one directory scan, signals futures when ready.\n        Times out after 4.5 minutes of no activity (container lives for 5 min).\n        \"\"\"\n        last_activity = time.time()\n        timeout_seconds = 270  # 4.5 minutes\n\n        while True:\n            if self._pending_calls:\n                # Get all files in directory (single syscall)\n                files = os.listdir(pfc_dir)\n\n                # Filter for response files\n                response_files = {f for f in files if f.endswith(\".response\")}\n\n                to_remove: list[str] = []\n                # Check which pending calls have responses ready\n                for custom_tool_use_id, future in self._pending_calls.items():\n                    response_filename = f\"{custom_tool_use_id}.response\"\n                    if response_filename in response_files:\n                        if not future.done():\n                            future.set_result(None)\n                        to_remove.append(custom_tool_use_id)\n                        last_activity = time.time()\n\n                for custom_tool_use_id in to_remove:\n                    del self._pending_calls[custom_tool_use_id]\n\n                # Check for inactivity timeout\n                if time.time() - last_activity > timeout_seconds:\n                    # Timeout - cancel all pending futures\n                    for future in self._pending_calls.values():\n                        if not future.done():\n                            future.cancel()\n                    return\n\n            await asyncio.sleep(0.1)  # Poll every 100ms\n\n\nasync def _call_client_tool(tool_name: str, **kwargs: Any) -> Any:\n    \"\"\"Call a client tool and wait for response.\n\n    Args:\n        tool_name: Original tool name\n        **kwargs: Function arguments (should contain 'params' key)\n\n    Returns:\n        Tool result (type varies based on tool)\n    \"\"\"\n    if not isinstance(tool_name, str):\n        raise TypeError(\n            f\"tool_name must be a string, got {type(tool_name).__name__}: {tool_name!r}\"\n        )\n\n    # Generate unique ID for this tool call\n    custom_tool_use_id = uuid.uuid4().hex\n\n    params: dict[str, Any] = kwargs.get(\"params\", {})\n\n    request: dict[str, Any] = {\n        \"tool\": tool_name,\n        \"parameters\": params,\n        \"tool_use_id\": custom_tool_use_id,\n    }\n\n    # Write request file\n    request_file = f\"{pfc_dir}/{custom_tool_use_id}.request\"\n    with open(request_file, \"w\") as f:\n        json.dump(request, f)\n\n    # Log to stdout for orchestrator to intercept\n    _original_stdout.write(f\"[TOOL_CALL] {json.dumps(request)}\\n\")\n    _original_stdout.flush()\n\n    # Wait for response file\n    registry = PFCToolCallRegistry.get_instance()\n    try:\n        await registry.wait_for_response(custom_tool_use_id)\n    except asyncio.CancelledError:\n        raise TimeoutError(f\"Calling tool ['{tool_name}'] timed out.\") from None\n\n    # Read response\n    response_file = f\"{pfc_dir}/{custom_tool_use_id}.response\"\n    with open(response_file) as f:\n        response = json.load(f)\n\n    _original_stdout.write(f\"[TOOL_RESULT] {json.dumps(response)}\\n\")\n    _original_stdout.flush()\n\n    return response[\"content\"]\n\n\n# Thin wrappers for each tool\nasync def get_cell_ranges(params: dict) -> str:\n    return await _call_client_tool('get_cell_ranges', **locals())\n\nasync def get_range_as_csv(params: dict) -> str:\n    return await _call_client_tool('get_range_as_csv', **locals())\n\nasync def set_cell_range(params: dict) -> str:\n    return await _call_client_tool('set_cell_range', **locals())\n```\n\n## How Multiple RPCs Compose\n\nEach tool call gets its **own unique file pair**:\n\n```\n/tmp/srvtoolu_xxx/\n├── abc123.request    # Tool call 1\n├── abc123.response\n├── def456.request    # Tool call 2\n├── def456.response\n├── ghi789.request    # Tool call 3\n└── ghi789.response\n```\n\nWhen you do `asyncio.gather()`:\n1. All 3 calls write their `.request` files immediately\n2. All 3 print `[TOOL_CALL]` to stdout\n3. All 3 `await registry.wait_for_response(...)` — adding 3 futures to `_pending_calls`\n4. The single `_monitor_loop` polls the directory, sees responses arrive, resolves the matching futures\n5. All 3 coroutines resume ~simultaneously when their response files appear\n\nThe orchestrator can see all 3 `[TOOL_CALL]` lines, batch them to your add-in, and write all 3 `.response` files — that's why gather'd calls complete at the same wall-clock time."
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "what if you don’t gather them? i’d imagine it would block anyways right because u need all results for the code execution block to complete. also what is _original_stdout?"
+        },
+        {
+          "type": "text",
+          "text": "<user_context>\nCurrent active sheet ID: 1\nSelected ranges: Sheet1!I15\n</user_context>"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "server_tool_use",
+          "id": "srvtoolu_016fiazPvj1C9zrkwDUbo8y5",
+          "name": "code_execution",
+          "input": {
+            "code": "\nimport inspect\nimport time\nimport asyncio\n\nprint(\"=== _original_stdout ===\")\nprint(f\"Type: {type(_original_stdout)}\")\nprint(f\"Value: {_original_stdout}\")\nprint(f\"Is same as sys.stdout? {_original_stdout is sys.stdout}\")\nprint(f\"sys.stdout type: {type(sys.stdout)}\")\n\nprint(\"\\n=== _captured_stdout ===\")\nprint(f\"Type: {type(_captured_stdout)}\")\nprint(f\"Value: {_captured_stdout}\")\n\nprint(\"\\n\\n=== Testing sequential (non-gathered) calls ===\")\nasync def main():\n    start = time.time()\n    \n    # Sequential - no gather\n    r1 = await get_range_as_csv({\"sheetId\": 1, \"range\": \"A1:A2\"})\n    t1 = time.time() - start\n    print(f\"Call 1 completed at {t1:.3f}s\")\n    \n    r2 = await get_range_as_csv({\"sheetId\": 1, \"range\": \"B1:B2\"})\n    t2 = time.time() - start\n    print(f\"Call 2 completed at {t2:.3f}s\")\n    \n    r3 = await get_range_as_csv({\"sheetId\": 1, \"range\": \"C1:C2\"})\n    t3 = time.time() - start\n    print(f\"Call 3 completed at {t3:.3f}s\")\n    \n    print(f\"\\nTotal time: {time.time() - start:.3f}s\")\n\nasyncio.run(main())\n"
+          },
+          "caller": { "type": "direct" }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_014mZu5dkrdEcWM5sFZH2QN1",
+          "name": "get_range_as_csv",
+          "input": { "sheetId": 1, "range": "A1:A2" },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_016fiazPvj1C9zrkwDUbo8y5"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_014mZu5dkrdEcWM5sFZH2QN1",
+          "content": "{\"success\":true,\"csv\":\"Col_0\\n103\",\"rowCount\":1,\"columnCount\":1,\"hasMore\":false,\"sheetName\":\"Sheet1\"}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01RUfBqBppbk95iHKyZVK65Z",
+          "name": "get_range_as_csv",
+          "input": { "sheetId": 1, "range": "B1:B2" },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_016fiazPvj1C9zrkwDUbo8y5"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01RUfBqBppbk95iHKyZVK65Z",
+          "content": "{\"success\":true,\"csv\":\"Col_1\\n436\",\"rowCount\":1,\"columnCount\":1,\"hasMore\":false,\"sheetName\":\"Sheet1\"}"
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": [
+        {
+          "type": "tool_use",
+          "id": "toolu_01TffExz1JR2629KeniyUhBP",
+          "name": "get_range_as_csv",
+          "input": { "sheetId": 1, "range": "C1:C2" },
+          "caller": {
+            "type": "code_execution_20250825",
+            "tool_id": "srvtoolu_016fiazPvj1C9zrkwDUbo8y5"
+          }
+        }
+      ]
+    },
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "tool_result",
+          "tool_use_id": "toolu_01TffExz1JR2629KeniyUhBP",
+          "content": "{\"success\":true,\"csv\":\"Col_2\\n861\",\"rowCount\":1,\"columnCount\":1,\"hasMore\":false,\"sheetName\":\"Sheet1\"}"
         }
       ]
     }
@@ -410,9 +3139,7 @@
           },
           "ranges": {
             "type": "array",
-            "items": {
-              "type": "string"
-            },
+            "items": { "type": "string" },
             "description": "Array of A1 notation ranges (e.g., [\"A1:C10\", \"E1:F5\"])"
           },
           "includeStyles": {
@@ -1182,22 +3909,15 @@
         "required": ["sheetId", "range"]
       }
     },
-    {
-      "type": "web_search_20250305",
-      "name": "web_search"
-    },
+    { "type": "web_search_20250305", "name": "web_search" },
     {
       "type": "code_execution_20250825",
       "name": "code_execution",
-      "cache_control": {
-        "type": "ephemeral"
-      }
+      "cache_control": { "type": "ephemeral" }
     }
   ],
   "model": "claude-opus-4-5-20251101",
-  "metadata": {
-    "user_id": "excel-add-in/aGV3bGl5YW5nQGdtYWlsLmNvbQ=="
-  },
+  "metadata": { "user_id": "excel-add-in/aGV3bGl5YW5nQGdtYWlsLmNvbQ==" },
   "max_tokens": 50000,
   "stream": true,
   "container": "container_011CXj1EJg1bFSwXLr4LuboX"
