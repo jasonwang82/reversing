@@ -1,0 +1,510 @@
+{
+  "tools": [
+    {
+      "name": "plan",
+      "description": "Create, update, and advance the structured task plan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["update", "advance"] },
+          "current_phase_id": { "type": "integer" },
+          "goal": { "type": "string" },
+          "next_phase_id": { "type": "integer" },
+          "phases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "title": { "type": "string" },
+                "capabilities": { "type": "object" }
+              }
+            }
+          }
+        },
+        "required": ["action", "current_phase_id"]
+      }
+    },
+    {
+      "name": "message",
+      "description": "Send messages to interact with the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["info", "ask", "result"] },
+          "text": { "type": "string" },
+          "attachments": { "type": "array", "items": { "type": "string" } },
+          "suggested_action": { "type": "string", "enum": ["none", "confirm_browser_operation", "take_over_browser", "upgrade_to_unlock_feature"] }
+        },
+        "required": ["type", "text"]
+      }
+    },
+    {
+      "name": "shell",
+      "description": "Interact with shell sessions in the sandbox environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["view", "exec", "wait", "send", "kill"] },
+          "brief": { "type": "string" },
+          "command": { "type": "string" },
+          "session": { "type": "string" },
+          "timeout": { "type": "integer" },
+          "input": { "type": "string" }
+        },
+        "required": ["brief", "action", "session"]
+      }
+    },
+    {
+      "name": "file",
+      "description": "Perform operations on files in the sandbox file system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["view", "read", "write", "append", "edit"] },
+          "path": { "type": "string" },
+          "brief": { "type": "string" },
+          "text": { "type": "string" },
+          "edits": { "type": "array", "items": { "type": "object", "properties": { "find": { "type": "string" }, "replace": { "type": "string" }, "all": { "type": "boolean" } } } },
+          "range": { "type": "array", "items": { "type": "integer" } }
+        },
+        "required": ["brief", "action", "path"]
+      }
+    },
+    {
+      "name": "match",
+      "description": "Find files or text in the sandbox file system using pattern matching.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": { "type": "string", "enum": ["glob", "grep"] },
+          "brief": { "type": "string" },
+          "scope": { "type": "string" },
+          "regex": { "type": "string" },
+          "leading": { "type": "integer" },
+          "trailing": { "type": "integer" }
+        },
+        "required": ["brief", "action", "scope"]
+      }
+    },
+    {
+      "name": "search",
+      "description": "Search for information across various sources.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["info", "image", "api", "news", "tool", "data", "research"] },
+          "queries": { "type": "array", "items": { "type": "string" } },
+          "brief": { "type": "string" },
+          "time": { "type": "string", "enum": ["all", "past_day", "past_week", "past_month", "past_year"] }
+        },
+        "required": ["brief", "type", "queries"]
+      }
+    },
+    {
+      "name": "browser_navigate",
+      "description": "Navigate the browser to a specified URL.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "intent": { "type": "string", "enum": ["navigational", "informational", "transactional"] },
+          "brief": { "type": "string" },
+          "focus": { "type": "string" }
+        },
+        "required": ["brief", "url", "intent"]
+      }
+    },
+    {
+      "name": "browser_view",
+      "description": "View the current content of the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": { "brief": { "type": "string" } },
+        "required": ["brief"]
+      }
+    },
+    {
+      "name": "browser_click",
+      "description": "Click an element on the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "index": { "type": "integer" },
+          "coordinate_x": { "type": "number" },
+          "coordinate_y": { "type": "number" },
+          "viewport_width": { "type": "number" },
+          "viewport_height": { "type": "number" }
+        },
+        "required": ["brief"]
+      }
+    },
+    {
+      "name": "browser_input",
+      "description": "Overwrite text in an editable field on the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "text": { "type": "string" },
+          "press_enter": { "type": "boolean" },
+          "index": { "type": "integer" },
+          "coordinate_x": { "type": "number" },
+          "coordinate_y": { "type": "number" },
+          "viewport_width": { "type": "number" },
+          "viewport_height": { "type": "number" }
+        },
+        "required": ["brief", "text", "press_enter"]
+      }
+    },
+    {
+      "name": "browser_scroll",
+      "description": "Scroll the browser page or a specific container element.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "target": { "type": "string", "enum": ["page", "container"] },
+          "direction": { "type": "string", "enum": ["up", "down", "left", "right"] },
+          "to_end": { "type": "boolean" },
+          "coordinate_x": { "type": "number" },
+          "coordinate_y": { "type": "number" },
+          "viewport_width": { "type": "number" },
+          "viewport_height": { "type": "number" }
+        },
+        "required": ["brief", "target", "direction"]
+      }
+    },
+    {
+      "name": "browser_move_mouse",
+      "description": "Move the cursor to a specified position on the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "coordinate_x": { "type": "number" },
+          "coordinate_y": { "type": "number" },
+          "viewport_width": { "type": "number" },
+          "viewport_height": { "type": "number" }
+        },
+        "required": ["brief", "viewport_width", "viewport_height", "coordinate_x", "coordinate_y"]
+      }
+    },
+    {
+      "name": "browser_press_key",
+      "description": "Simulate a key press on the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "key": { "type": "string" }
+        },
+        "required": ["brief", "key"]
+      }
+    },
+    {
+      "name": "browser_select_option",
+      "description": "Select an option from a dropdown menu on the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "index": { "type": "integer" },
+          "option_index": { "type": "integer" }
+        },
+        "required": ["brief", "index", "option_index"]
+      }
+    },
+    {
+      "name": "browser_save_image",
+      "description": "Save an image from the browser page to a local file.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "save_dir": { "type": "string" },
+          "base_name": { "type": "string" },
+          "coordinate_x": { "type": "number" },
+          "coordinate_y": { "type": "number" },
+          "viewport_width": { "type": "number" },
+          "viewport_height": { "type": "number" }
+        },
+        "required": ["brief", "viewport_width", "viewport_height", "coordinate_x", "coordinate_y", "save_dir", "base_name"]
+      }
+    },
+    {
+      "name": "browser_upload_file",
+      "description": "Upload files to a file input element on the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "files": { "type": "array", "items": { "type": "object", "properties": { "index": { "type": "integer" }, "path": { "type": "string" } } } }
+        },
+        "required": ["brief", "files"]
+      }
+    },
+    {
+      "name": "browser_find_keyword",
+      "description": "Find a keyword on the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "keyword": { "type": "string" }
+        },
+        "required": ["brief", "keyword"]
+      }
+    },
+    {
+      "name": "browser_fill_form",
+      "description": "Fill out multiple form fields at once on the browser page.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "fields": { "type": "array", "items": { "type": "object", "properties": { "index": { "type": "integer" }, "value": { "type": "string" } } } }
+        },
+        "required": ["brief", "fields"]
+      }
+    },
+    {
+      "name": "browser_console_exec",
+      "description": "Execute JavaScript in the browser console.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "javascript": { "type": "string" }
+        },
+        "required": ["brief", "javascript"]
+      }
+    },
+    {
+      "name": "browser_console_view",
+      "description": "View the content of the browser console.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "max_lines": { "type": "integer" }
+        },
+        "required": ["brief"]
+      }
+    },
+    {
+      "name": "browser_close",
+      "description": "Close the browser window.",
+      "parameters": {
+        "type": "object",
+        "properties": { "brief": { "type": "string" } },
+        "required": ["brief"]
+      }
+    },
+    {
+      "name": "generate_image",
+      "description": "Generate images using AI based on prompts and visual references.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "prompt": { "type": "string" },
+                "path": { "type": "string" },
+                "aspect_ratio": { "type": "string", "enum": ["auto", "landscape", "portrait", "square"] },
+                "references": { "type": "array", "items": { "type": "string" } },
+                "transparent_background": { "type": "string" }
+              }
+            }
+          }
+        },
+        "required": ["brief", "images"]
+      }
+    },
+    {
+      "name": "generate_image_variation",
+      "description": "Edit or refine existing images using AI based on prompts.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "prompt": { "type": "string" },
+          "path": { "type": "string" },
+          "references": { "type": "array", "items": { "type": "string" } },
+          "aspect_ratio": { "type": "string", "enum": ["1:1", "4:3", "3:4", "16:9", "9:16", "21:9", "9:21"] }
+        },
+        "required": ["brief", "path", "prompt", "references"]
+      }
+    },
+    {
+      "name": "generate_video",
+      "description": "Generate a video using AI based on prompts and visual references.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "prompt": { "type": "string" },
+          "path": { "type": "string" },
+          "aspect_ratio": { "type": "string", "enum": ["landscape", "portrait", "square"] },
+          "duration_seconds": { "type": "integer", "enum": [4, 6, 8] },
+          "generate_audio": { "type": "boolean" },
+          "keyframes": { "type": "object", "properties": { "first": { "type": "string" }, "last": { "type": "string" } } },
+          "references": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["brief", "path", "prompt", "aspect_ratio"]
+      }
+    },
+    {
+      "name": "generate_speech",
+      "description": "Generate speech audio from text using AI.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "text": { "type": "string" },
+          "path": { "type": "string" },
+          "voice": { "type": "string", "enum": ["male_voice", "female_voice"] }
+        },
+        "required": ["brief", "path", "text", "voice"]
+      }
+    },
+    {
+      "name": "slides_create",
+      "description": "Create a new presentation from a markdown outline.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "slide_content_file_path": { "type": "string" },
+          "slide_count": { "type": "number" },
+          "generate_mode": { "type": "string", "enum": ["html", "image"] }
+        },
+        "required": ["brief", "slide_content_file_path", "slide_count", "generate_mode"]
+      }
+    },
+    {
+      "name": "slides_view",
+      "description": "View the current state of the slides being edited.",
+      "parameters": {
+        "type": "object",
+        "properties": { "brief": { "type": "string" } },
+        "required": ["brief"]
+      }
+    },
+    {
+      "name": "webdev_init_project",
+      "description": "Initialize a new web or mobile app project with scaffold and automated environment setup.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "scaffold": { "type": "string", "enum": ["web-static", "web-db-user", "mobile-app"] },
+          "brief": { "type": "string" }
+        },
+        "required": ["brief", "name", "title", "description", "scaffold"]
+      }
+    },
+    {
+      "name": "webdev_check_status",
+      "description": "Check the current status of the project development environment.",
+      "parameters": {
+        "type": "object",
+        "properties": { "brief": { "type": "string" } },
+        "required": ["brief"]
+      }
+    },
+    {
+      "name": "webdev_restart_server",
+      "description": "Restart development services for the project.",
+      "parameters": {
+        "type": "object",
+        "properties": { "brief": { "type": "string" } },
+        "required": ["brief"]
+      }
+    },
+    {
+      "name": "webdev_add_feature",
+      "description": "Extend project capabilities by adding features to existing projects.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "feature": { "type": "string", "enum": ["web-db-user", "stripe"] }
+        },
+        "required": ["brief", "feature"]
+      }
+    },
+    {
+      "name": "webdev_save_checkpoint",
+      "description": "Save a checkpoint of the current project state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "description": { "type": "string" },
+          "timeout": { "type": "number" }
+        },
+        "required": ["brief", "description"]
+      }
+    },
+    {
+      "name": "webdev_rollback_checkpoint",
+      "description": "Rollback project to a previous checkpoint state.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "version_id": { "type": "string" }
+        },
+        "required": ["brief", "version_id"]
+      }
+    },
+    {
+      "name": "webdev_execute_sql",
+      "description": "Execute a custom SQL query on the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "query": { "type": "string" }
+        },
+        "required": ["brief", "query"]
+      }
+    },
+    {
+      "name": "schedule",
+      "description": "Schedule a task to run at a specific time or interval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["cron", "interval"] },
+          "name": { "type": "string" },
+          "prompt": { "type": "string" },
+          "repeat": { "type": "boolean" },
+          "brief": { "type": "string" },
+          "cron": { "type": "string" },
+          "interval": { "type": "integer" },
+          "expire": { "type": "string" },
+          "playbook": { "type": "string" }
+        },
+        "required": ["brief", "type", "repeat", "name", "prompt"]
+      }
+    },
+    {
+      "name": "expose",
+      "description": "Expose a local port in the sandbox for temporary public access.",
+      "parameters": {
+        "type": "object",
+        "properties": { "port": { "type": "integer" }, "brief": { "type": "string" } },
+        "required": ["brief", "port"]
+      }
+    }
+  ]
+}
