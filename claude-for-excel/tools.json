@@ -925,12 +925,92 @@
     }
   },
   {
+    "type": "custom",
+    "name": "ask_user_question",
+    "description": "Present tappable options to gather user preferences before starting work. This tool displays interactive options that users can tap to answer, which is faster and easier than typing.\n\nWHEN TO USE THIS TOOL:\nUse this for ELICITATION - when you need to understand the user's preferences, constraints, or goals before proceeding.\n\nExamples of when to USE this tool:\n- \"Build me a financial model\" → Ask about model type (DCF / 3-statement / LBO), time horizon (5-year / 10-year), whether they have assumptions or want standard ones\n- \"Help me analyze this data\" → Ask about analysis type (trends / comparisons / distributions), how to present results (summary / chart / pivot table)\n- \"Create a budget template\" → Ask about time granularity (monthly / quarterly / annual), department vs project-based\n- \"Clean up this spreadsheet\" → Ask about what to prioritize (formatting / data validation / structure / duplicates)\n\nCRITICAL: If you find yourself about to write clarifying questions with bullet points or numbered options in your response, STOP and use this tool instead. The questions you were going to write should become tappable options.\n\nWHEN NOT TO USE THIS TOOL:\n- User asks for your analysis or recommendation (e.g. \"Which formula should I use?\") → Give your perspective directly\n- Factual or how-to questions (e.g. \"How do I freeze panes?\") → Just answer\n- User needs prose feedback (e.g. \"Does this formula look right?\") → Provide written analysis\n- The question requires open-ended numeric input (e.g. \"What revenue to assume?\", \"What discount rate?\") → Ask in natural language\n\nAlways include a brief conversational message before presenting options - don't show options silently. Keep each question focused with 2-4 clear options.\n\nDo NOT include \"Other\" as one of the options — the UI already provides a free-text \"Something else\" input automatically.\n\nFor single-select questions, the response is a string. For multi-select, it's an array of strings.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "questions": {
+          "minItems": 1,
+          "maxItems": 4,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string"
+              },
+              "header": {
+                "type": "string"
+              },
+              "options": {
+                "minItems": 2,
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "label",
+                    "description"
+                  ]
+                }
+              },
+              "multiSelect": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "question",
+              "header",
+              "options",
+              "multiSelect"
+            ]
+          }
+        }
+      },
+      "required": [
+        "questions"
+      ]
+    }
+  },
+  {
     "type": "web_search_20250305",
     "name": "web_search"
   },
   {
     "type": "code_execution_20250825",
-    "name": "code_execution",
+    "name": "code_execution"
+  },
+  {
+    "type": "custom",
+    "name": "execute_office_js",
+    "description": "Execute Office.js JavaScript code to interact with the Excel document. The code receives a context parameter and runs inside Excel.run(). Use this for any document operations.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Async function body that receives 'context: Excel.RequestContext'. Must call context.sync() to execute batched operations and load() to read properties. Return JSON-serializable results."
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "code"
+      ]
+    },
     "cache_control": {
       "type": "ephemeral"
     }
