@@ -1,0 +1,238 @@
+[
+  {
+    "type": "code_execution_20250825",
+    "name": "code_execution"
+  },
+  {
+    "type": "web_search_20250305",
+    "name": "web_search"
+  },
+  {
+    "type": "custom",
+    "name": "execute_office_js",
+    "description": "Execute Office.js JavaScript code to interact with the PowerPoint document. The code receives a context parameter and runs inside PowerPoint.run(). Use this for any document operations.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Async function body that receives 'context: PowerPoint.RequestContext'. Must call context.sync() to execute batched operations and load() to read properties. Return JSON-serializable results."
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "code"
+      ]
+    }
+  },
+  {
+    "type": "custom",
+    "name": "screenshot_slide",
+    "description": "Take a screenshot of a slide to assist with visual verification of layout, positioning, and content for overflows and overlaps.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "slide_index": {
+          "type": "number",
+          "description": "0-based slide index (user's slide 1 = index 0, slide 3 = index 2)"
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "slide_index"
+      ]
+    }
+  },
+  {
+    "type": "custom",
+    "name": "edit_slide_chart",
+    "description": "Add or edit charts in a PowerPoint slide by manipulating raw OOXML. Always use this for data visualizations — never approximate charts with geometric shapes.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "slide_index": {
+          "type": "number",
+          "description": "0-based slide index (user's slide 1 = index 0, slide 3 = index 2)"
+        },
+        "code": {
+          "type": "string",
+          "description": "Async function body receiving { zip, markDirty }. zip is a JSZip archive of the slide. Call markDirty() if you modified files. An escapeXml(text) global is available to escape special characters for XML text content."
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "slide_index",
+        "code"
+      ]
+    }
+  },
+  {
+    "type": "custom",
+    "name": "edit_slide_master",
+    "description": "Edit slide master and layouts via OOXML — set backgrounds, decorative elements (accent lines, dividers, borders), branding shapes, fonts, theme colors, and placeholders. Use this for any visual element that should appear on all slides.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Async function body receiving { zip, markDirty }. zip is a JSZip archive containing the full PPTX structure including ppt/slideMasters/ and ppt/slideLayouts/. Call markDirty() if you modified files. An escapeXml(text) global is available to escape special characters for XML text content."
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "code"
+      ]
+    }
+  },
+  {
+    "type": "custom",
+    "name": "edit_slide_xml",
+    "description": "Edit raw OOXML of a PowerPoint slide — use for advanced formatting, custom XML manipulation, or anything not covered by other slide tools. IMPORTANT: When embedding user-facing text in XML, use the escapeXml(text) global to escape special characters (& → &amp;, < → &lt;, etc.) to prevent broken XML.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "slide_index": {
+          "type": "number",
+          "description": "0-based slide index (user's slide 1 = index 0, slide 3 = index 2)"
+        },
+        "code": {
+          "type": "string",
+          "description": "Async function body receiving { zip, markDirty }. zip is a JSZip archive of the slide. Call markDirty() if you modified files. An escapeXml(text) global is available to escape &, <, >, \", ' for safe embedding in XML text content."
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "slide_index",
+        "code"
+      ]
+    }
+  },
+  {
+    "type": "custom",
+    "name": "duplicate_slide",
+    "description": "Duplicate a slide in the presentation. The copy is inserted immediately after the original slide.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "slide_index": {
+          "type": "number",
+          "description": "0-based slide index (user's slide 1 = index 0, slide 3 = index 2)"
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "slide_index"
+      ]
+    }
+  },
+  {
+    "type": "custom",
+    "name": "verify_slides",
+    "description": "Verify all slides for overlapping shapes, out-of-bounds positioning, and unused placeholders. Returns structured results per slide.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "type": "custom",
+    "name": "read_slide_text",
+    "description": "Read the raw OOXML paragraph XML from a shape's text body. Returns the <a:p> elements as a string. Use this to inspect existing text content, formatting, bullets, and styles before editing.\n\nThe returned XML uses DrawingML namespaces (a: prefix). Key elements:\n- <a:p> = paragraph, <a:r> = text run, <a:t> = text content\n- <a:rPr> = run properties (b=\"1\" bold, i=\"1\" italic, sz=\"1000\" font size in hundredths of pt)\n- <a:pPr> = paragraph properties (algn=\"ctr\", lvl=\"1\" indent level)\n- <a:buChar char=\"•\"/> = bullet character, <a:buAutoNum type=\"arabicPeriod\"/> = numbered list\n- <a:buNone/> = no bullet, <a:buFont typeface=\"Wingdings\"/> = bullet font\n- <a:solidFill><a:srgbClr val=\"FF0000\"/></a:solidFill> = explicit color\n- <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill> = theme color\n- <a:latin typeface=\"Calibri\"/> = font family\n- <a:lnSpc><a:spcPts val=\"1400\"/></a:lnSpc> = line spacing (hundredths of pt)\n- <a:spcBef>/<a:spcAft> = space before/after paragraph\n- <a:hlinkClick r:id=\"rId2\"/> = hyperlink inside <a:rPr>\n\nExample output for a shape with a title + bulleted content with theme colors and line spacing:\n\n<a:p>\n  <a:pPr marL=\"0\" indent=\"0\">\n    <a:lnSpc><a:spcPts val=\"1400\"/></a:lnSpc>\n    <a:spcBef><a:spcPts val=\"300\"/></a:spcBef>\n    <a:spcAft><a:spcPts val=\"300\"/></a:spcAft>\n    <a:buNone/>\n  </a:pPr>\n  <a:r>\n    <a:rPr lang=\"en-US\" sz=\"1000\" dirty=\"0\">\n      <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill>\n    </a:rPr>\n    <a:t>Headquartered in Beaverton, OR</a:t>\n  </a:r>\n</a:p>\n<a:p>\n  <a:pPr lvl=\"1\">\n    <a:lnSpc><a:spcPts val=\"1400\"/></a:lnSpc>\n    <a:spcBef><a:spcPts val=\"300\"/></a:spcBef>\n    <a:spcAft><a:spcPts val=\"300\"/></a:spcAft>\n  </a:pPr>\n  <a:r>\n    <a:rPr lang=\"en-US\" sz=\"1000\" dirty=\"0\">\n      <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill>\n    </a:rPr>\n    <a:t>Operates three iconic brands: </a:t>\n  </a:r>\n  <a:r>\n    <a:rPr lang=\"en-US\" sz=\"1000\" b=\"1\" dirty=\"0\">\n      <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill>\n    </a:rPr>\n    <a:t>Nike</a:t>\n  </a:r>\n  <a:r>\n    <a:rPr lang=\"en-US\" sz=\"1000\" dirty=\"0\">\n      <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill>\n    </a:rPr>\n    <a:t>, </a:t>\n  </a:r>\n  <a:r>\n    <a:rPr lang=\"en-US\" sz=\"1000\" b=\"1\" dirty=\"0\">\n      <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill>\n    </a:rPr>\n    <a:t>Jordan</a:t>\n  </a:r>\n  <a:r>\n    <a:rPr lang=\"en-US\" sz=\"1000\" dirty=\"0\">\n      <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill>\n    </a:rPr>\n    <a:t> and </a:t>\n  </a:r>\n  <a:r>\n    <a:rPr lang=\"en-US\" sz=\"1000\" b=\"1\" dirty=\"0\">\n      <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill>\n    </a:rPr>\n    <a:t>Converse</a:t>\n  </a:r>\n</a:p>",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "slide_index": {
+          "type": "number",
+          "description": "0-based slide index (user's slide 1 = index 0, slide 3 = index 2)"
+        },
+        "shape_name": {
+          "type": "string",
+          "description": "Shape name (e.g., \"Title 1\", \"Content Placeholder 2\")"
+        },
+        "occurrence": {
+          "description": "0-based index when multiple shapes share the same name (default 0 = first match). Use when a slide has duplicate shape names like multiple 'Text Box 100' shapes.",
+          "type": "number"
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "slide_index",
+        "shape_name"
+      ]
+    }
+  },
+  {
+    "type": "custom",
+    "name": "edit_slide_text",
+    "description": "Replace the paragraph content of a shape with raw OOXML <a:p> XML. The tool preserves the shape's <a:bodyPr> and <a:lstStyle>. You only provide the <a:p> elements. See the Text Formatting DOs and DON'Ts in the system prompt for editing rules.\n\nOOXML quick reference:\n- Font size: sz in hundredths of a point (sz=\"2800\" = 28pt, sz=\"1000\" = 10pt)\n- Bold: b=\"1\", Italic: i=\"1\", Underline: u=\"sng\" on <a:rPr>\n- Color: <a:solidFill><a:srgbClr val=\"FF0000\"/></a:solidFill> or <a:solidFill><a:schemeClr val=\"tx2\"/></a:solidFill>\n- Font: <a:latin typeface=\"Calibri\"/> inside <a:rPr>\n- Alignment: algn=\"l|ctr|r|just\" on <a:pPr>\n- Bullet char: <a:buFont typeface=\"Arial\"/><a:buChar char=\"•\"/> inside <a:pPr>\n- Numbered: <a:buAutoNum type=\"arabicPeriod\"/> inside <a:pPr>\n- No bullet: <a:buNone/> inside <a:pPr>\n- Indent level: lvl is 0-based. Top-level bullets = lvl=\"0\" or omit lvl (default is 0). Sub-bullets = lvl=\"1\". Headers are NOT a \"level\" — they are level 0 with <a:buNone/>\n- Hanging indent: marL=\"228600\" indent=\"-228600\" on <a:pPr>\n- Line spacing: <a:lnSpc><a:spcPts val=\"1400\"/></a:lnSpc> inside <a:pPr>\n- Space before/after: <a:spcBef><a:spcPts val=\"300\"/></a:spcBef> inside <a:pPr>\n- Always include lang=\"en-US\" dirty=\"0\" on <a:rPr>\n\nTop-level bullet paragraph (use when adding bullets — do NOT use <a:buNone/> or lvl=\"1\" for regular bullets):\n<a:p><a:pPr><a:buFont typeface=\"Arial\"/><a:buChar char=\"•\"/></a:pPr><a:r><a:rPr lang=\"en-US\" sz=\"1000\" dirty=\"0\"/><a:t>Bullet text</a:t></a:r></a:p>\n\nHeader paragraph (no bullet):\n<a:p><a:pPr><a:buNone/></a:pPr><a:r><a:rPr lang=\"en-US\" sz=\"1000\" b=\"1\" dirty=\"0\"/><a:t>Header text</a:t></a:r></a:p>",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "slide_index": {
+          "type": "number",
+          "description": "0-based slide index (user's slide 1 = index 0, slide 3 = index 2)"
+        },
+        "shape_name": {
+          "type": "string",
+          "description": "Target shape name (e.g., \"Title 1\", \"Content Placeholder 2\")"
+        },
+        "code": {
+          "type": "string",
+          "description": "Raw OOXML <a:p> paragraph XML to replace the shape's text content"
+        },
+        "occurrence": {
+          "description": "0-based index when multiple shapes share the same name (default 0 = first match).",
+          "type": "number"
+        },
+        "explanation": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "A very brief description of the action (max 50 chars). Shown next to the tool icon & permission prompts."
+        }
+      },
+      "required": [
+        "slide_index",
+        "shape_name",
+        "code"
+      ]
+    },
+    "cache_control": {
+      "type": "ephemeral"
+    }
+  }
+]
