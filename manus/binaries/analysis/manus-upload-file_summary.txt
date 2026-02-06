@@ -1,0 +1,31 @@
+Binary Analysis Summary
+=======================
+
+File: manus-upload-file
+Architecture: x86
+Address Size: 64 bit
+Endianness: false (big endian)
+Compiler: gcc
+
+Functions:
+  Total: 4871
+  External: 0
+  Thunks: 3
+  User-defined: 4868
+
+Memory Sections:
+  segment_2.1: 00400000 - 00400f77 (3960 bytes) [R]
+  .note.go.buildid: 00400f78 - 00400fdb (100 bytes) [R]
+  .note.gnu.build-id: 00400fdc - 00400fff (36 bytes) [R]
+  .text: 00401000 - 0080e830 (4249649 bytes) [X] [R]
+  .rodata: 0080f000 - 009ca9b8 (1817017 bytes) [R]
+  .typelink: 009ca9c0 - 009cd76b (11692 bytes) [R]
+  .itablink: 009cd780 - 009ce6f7 (3960 bytes) [R]
+  .gopclntab: 009ce700 - 00c6ff47 (2758728 bytes) [R]
+  .go.buildinfo: 00c70000 - 00c705af (1456 bytes) [W] [R]
+  .go.fipsinfo: 00c705c0 - 00c70637 (120 bytes) [W] [R]
+  .noptrdata: 00c70640 - 00ccf500 (388801 bytes) [W] [R]
+  .data: 00ccf520 - 00ce5d31 (92178 bytes) [W] [R]
+  .bss: 00ce5d40 - 00d0a6e7 (149928 bytes) [W] [R]
+  .noptrbss: 00d0a700 - 00d29a7f (127872 bytes) [W] [R]
+  .shstrtab: .shstrtab::00000000 - .shstrtab::000000b7 (184 bytes)

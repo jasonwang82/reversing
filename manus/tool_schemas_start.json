@@ -1,0 +1,323 @@
+{
+  "tools": [
+    {
+      "name": "plan",
+      "description": "Create, update, and advance the structured task plan.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["update", "advance"],
+            "description": "The action to perform"
+          },
+          "current_phase_id": {
+            "type": "integer",
+            "description": "ID of the phase the task is currently in."
+          },
+          "goal": {
+            "type": "string",
+            "description": "The overall goal of the task. Required for update action."
+          },
+          "next_phase_id": {
+            "type": "integer",
+            "description": "ID of the phase the task is advancing to. Required for advance action."
+          },
+          "phases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "title": { "type": "string" },
+                "capabilities": { "type": "object" }
+              }
+            },
+            "description": "Complete list of phases required to achieve the task goal. Required for update action."
+          }
+        },
+        "required": ["action", "current_phase_id"]
+      }
+    },
+    {
+      "name": "message",
+      "description": "Send messages to interact with the user.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["info", "ask", "result"],
+            "description": "The type of the message"
+          },
+          "text": {
+            "type": "string",
+            "description": "The message or question text"
+          },
+          "attachments": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "A list of absolute file paths or URLs to attach"
+          },
+          "suggested_action": {
+            "type": "string",
+            "enum": [
+              "none",
+              "confirm_browser_operation",
+              "take_over_browser",
+              "upgrade_to_unlock_feature"
+            ],
+            "description": "The suggested action for the user to take (optional, for ask type)"
+          }
+        },
+        "required": ["type", "text"]
+      }
+    },
+    {
+      "name": "shell",
+      "description": "Interact with shell sessions in the sandbox environment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["view", "exec", "wait", "send", "kill"],
+            "description": "The action to perform"
+          },
+          "brief": {
+            "type": "string",
+            "description": "A one-sentence preamble describing the purpose"
+          },
+          "command": {
+            "type": "string",
+            "description": "The shell command to execute. Required for exec action."
+          },
+          "session": {
+            "type": "string",
+            "description": "The unique identifier of the target shell session"
+          },
+          "timeout": {
+            "type": "integer",
+            "description": "Timeout in seconds"
+          },
+          "input": {
+            "type": "string",
+            "description": "Input text to send to the interactive session. Required for send action."
+          }
+        },
+        "required": ["brief", "action", "session"]
+      }
+    },
+    {
+      "name": "file",
+      "description": "Perform operations on files in the sandbox file system.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["view", "read", "write", "append", "edit"],
+            "description": "The action to perform"
+          },
+          "path": {
+            "type": "string",
+            "description": "The absolute path to the target file"
+          },
+          "brief": {
+            "type": "string",
+            "description": "A one-sentence preamble describing the purpose"
+          },
+          "text": {
+            "type": "string",
+            "description": "The content to be written or appended."
+          },
+          "edits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "find": { "type": "string" },
+                "replace": { "type": "string" },
+                "all": { "type": "boolean" }
+              }
+            },
+            "description": "A list of edits for the edit action."
+          },
+          "range": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "description": "Start and end range for reading or viewing."
+          }
+        },
+        "required": ["brief", "action", "path"]
+      }
+    },
+    {
+      "name": "match",
+      "description": "Find files or text in the sandbox file system using pattern matching.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["glob", "grep"],
+            "description": "The action to perform"
+          },
+          "brief": {
+            "type": "string",
+            "description": "A one-sentence preamble describing the purpose"
+          },
+          "scope": {
+            "type": "string",
+            "description": "The glob pattern that defines the absolute file path and name scope"
+          },
+          "regex": {
+            "type": "string",
+            "description": "The regex pattern to match file content. Required for grep action."
+          },
+          "leading": { "type": "integer" },
+          "trailing": { "type": "integer" }
+        },
+        "required": ["brief", "action", "scope"]
+      }
+    },
+    {
+      "name": "search",
+      "description": "Search for information across various sources.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "info",
+              "image",
+              "api",
+              "news",
+              "tool",
+              "data",
+              "research"
+            ],
+            "description": "The category of search to perform"
+          },
+          "queries": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Up to 3 query variants"
+          },
+          "brief": {
+            "type": "string",
+            "description": "A one-sentence preamble describing the purpose"
+          },
+          "time": {
+            "type": "string",
+            "enum": ["all", "past_day", "past_week", "past_month", "past_year"]
+          }
+        },
+        "required": ["brief", "type", "queries"]
+      }
+    },
+    {
+      "name": "browser",
+      "description": "Navigate the browser to a specified URL to begin web browsing session.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": { "type": "string" },
+          "intent": {
+            "type": "string",
+            "enum": ["navigational", "informational", "transactional"]
+          },
+          "brief": { "type": "string" },
+          "focus": { "type": "string" }
+        },
+        "required": ["brief", "url", "intent"]
+      }
+    },
+    {
+      "name": "generate",
+      "description": "Enter generation mode to create or edit images, videos, audio, and speech.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" }
+        },
+        "required": ["brief"]
+      }
+    },
+    {
+      "name": "slides",
+      "description": "Enter slides mode to handle presentation creation and adjustment.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "brief": { "type": "string" },
+          "slide_content_file_path": { "type": "string" },
+          "slide_count": { "type": "number" },
+          "generate_mode": {
+            "type": "string",
+            "enum": ["html", "image"]
+          }
+        },
+        "required": [
+          "brief",
+          "slide_content_file_path",
+          "slide_count",
+          "generate_mode"
+        ]
+      }
+    },
+    {
+      "name": "webdev_init_project",
+      "description": "Initialize a new web or mobile app project with scaffold and automated environment setup.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "scaffold": {
+            "type": "string",
+            "enum": ["web-static", "web-db-user", "mobile-app"]
+          },
+          "brief": { "type": "string" }
+        },
+        "required": ["brief", "name", "title", "description", "scaffold"]
+      }
+    },
+    {
+      "name": "schedule",
+      "description": "Schedule a task to run at a specific time or interval.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["cron", "interval"]
+          },
+          "name": { "type": "string" },
+          "prompt": { "type": "string" },
+          "repeat": { "type": "boolean" },
+          "brief": { "type": "string" },
+          "cron": { "type": "string" },
+          "interval": { "type": "integer" },
+          "expire": { "type": "string" },
+          "playbook": { "type": "string" }
+        },
+        "required": ["brief", "type", "repeat", "name", "prompt"]
+      }
+    },
+    {
+      "name": "expose",
+      "description": "Expose a local port in the sandbox for temporary public access.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "port": { "type": "integer" },
+          "brief": { "type": "string" }
+        },
+        "required": ["brief", "port"]
+      }
+    }
+  ]
+}
